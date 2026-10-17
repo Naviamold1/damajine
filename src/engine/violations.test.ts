@@ -58,4 +58,12 @@ describe('findViolations', () => {
       { ruleId: null, kind: 'capacity', hard: true, guestIds: ['a', 'b'], seatableIds: ['t1'], message: 't1 is over capacity (5/4)' },
     ])
   })
+  it('flags wheelchair users at inaccessible seats without an explicit rule', () => {
+    const chart = makeChart({
+      guests: [{ id: 'w', needs: ['wheelchair'] }, { id: 'v', needs: ['wheelchair'] }],
+      tables,
+      assignments: [{ guestId: 'w', seatableId: 't2' }, { guestId: 'v', seatableId: 't1' }],
+    })
+    expect(findViolations(chart)).toEqual([expect.objectContaining({ ruleId: null, kind: 'accessible', guestIds: ['w'], seatableIds: ['t2'] })])
+  })
 })

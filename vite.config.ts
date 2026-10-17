@@ -6,4 +6,5 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: { alias: { '@': path.resolve(import.meta.dirname, 'src') } },
+  test: { exclude: ['**/node_modules/**', '.claude/**'] },
 })

@@ -54,6 +54,14 @@ export function findViolations(chart: Chart): Violation[] {
     }
   }
 
+  // Wheelchair users need an accessible seat even without an explicit rule.
+  const covered = new Set(out.filter((v) => v.kind === 'accessible').flatMap((v) => v.guestIds))
+  for (const [gid, seat] of seatOf) {
+    const g = guests.get(gid)
+    if (!g?.needs.includes('wheelchair') || seat.accessible || covered.has(gid)) continue
+    out.push({ ruleId: null, kind: 'accessible', hard: true, guestIds: [gid], seatableIds: [seat.id], message: `${g.name} needs an accessible seat` })
+  }
+
   const load = new Map<string, Guest[]>()
   for (const [gid, seat] of seatOf) {
     const g = guests.get(gid)
