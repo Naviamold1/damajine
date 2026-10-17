@@ -107,4 +107,63 @@ export const demoCache = new Map<string, unknown>([
     rules: [{ type: 'together', guestIds: ['chen', 'smith'], hard: true }],
     explanation: 'The Chen party joins the Smiths.',
   }),
+
+  // Hackathon
+  rules('Put team Khachapuri near the stage', {
+    rules: [
+      {
+        type: 'zone',
+        guestIds: ['mariam-kvaratskhelia', 'saba-jgerenaia', 'ella-watson', 'tornike-chkhaidze'],
+        zone: 'near-stage',
+        hard: false,
+      },
+    ],
+    explanation: 'Team Khachapuri (Mariam, Saba, Ella, Tornike) gets a front table by the stage.',
+  }),
+  rules('Seat Ana with her team', {
+    rules: [
+      { type: 'together', guestIds: ['ana-gelovani', 'gela-dadiani', 'ketino-gvasalia', 'mike-turner'], hard: true },
+    ],
+    explanation: 'Ana Gelovani joins the rest of Svaneti Signal (Gela, Ketino, Mike) at their table.',
+  }),
+  rules('Keep the Supra Stack and Tamada teams apart', {
+    rules: [{ type: 'apart', guestIds: ['davit-sulaberidze', 'lado-gamkrelidze'], hard: true }],
+    explanation: 'Supra Stack and Tamada sit at different tables (each team stays together, so splitting the captains splits the teams).',
+  }),
+  rules('Put Giga near power', {
+    rules: [{ type: 'zone', guestIds: ['giga-kobakhidze'], zone: 'near-power', hard: false }],
+    explanation: 'Giga Kobakhidze prefers a table by the wall sockets.',
+  }),
+
+  // Auditorium
+  rules('Put the press in the reserved rows', {
+    rules: [
+      {
+        type: 'zone',
+        guestIds: ['lela-chanturia', 'tom-spencer', 'dato-kvirkvelia', 'anna-kowalski'],
+        zone: 'reserved',
+        hard: false,
+      },
+    ],
+    explanation: 'The four press guests sit in the reserved rows.',
+  }),
+  rules('Put the sponsors in the front row', {
+    rules: [
+      {
+        type: 'zone',
+        guestIds: ['zurab-zhgenti', 'nana-kvirikadze', 'robert-hayes', 'mzia-eristavi'],
+        zone: 'front',
+        hard: false,
+      },
+    ],
+    explanation: 'The four sponsors (6 seats with plus-ones) sit in row A.',
+  }),
+  rules('Keep Archil and Marina apart', {
+    rules: [{ type: 'apart', guestIds: ['archil-gvalia', 'marina-gelovani'], hard: true }],
+    explanation: 'Archil Gvalia and Marina Gelovani sit in different rows.',
+  }),
+  rules('Medea Jgharkava needs wheelchair access', {
+    rules: [{ type: 'accessible', guestIds: ['medea-jgharkava'] }],
+    explanation: 'Medea Jgharkava gets a wheelchair bay.',
+  }),
 ])

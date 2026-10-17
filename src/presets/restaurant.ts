@@ -4,7 +4,7 @@ import { guest } from './build'
 /**
  * Saturday night floor: 14 seatables (booths, 2-tops, 4-tops, bar, terrace).
  * Each guest is a party with `size`; some are already eating (pinned), the rest are walk-ins to seat.
- * F3 is step-free; terrace tables carry zone `terrace`.
+ * F3 is step-free; terrace tables carry zone `terrace`. The kitchen is next to the bar.
  */
 export const restaurant = Chart.parse({
   kind: 'restaurant',
@@ -39,6 +39,11 @@ export const restaurant = Chart.parse({
     { id: 'p1', kind: 'round', label: 'P1', seats: 4, x: 900, y: 200, zone: 'terrace' },
     { id: 'p2', kind: 'round', label: 'P2', seats: 4, x: 1060, y: 200, zone: 'terrace' },
     { id: 'p3', kind: 'round', label: 'P3', seats: 4, x: 980, y: 380, zone: 'terrace' },
+  ],
+  decor: [
+    { id: 'kitchen', label: 'Kitchen', x: 760, y: 680, w: 240, h: 120 },
+    { id: 'entrance', label: 'Entrance', x: 110, y: 700, w: 120, h: 40 },
+    { id: 'terrace', label: 'Terrace', x: 980, y: 70, w: 320, h: 36 },
   ],
   rules: [],
   assignments: [
