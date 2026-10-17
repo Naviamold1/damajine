@@ -58,5 +58,5 @@ export const restaurantRuleTemplates = [
   'Seat the Gelashvili party on the terrace',
   'The Japaridze party needs wheelchair access',
   'Keep the Lomidze and Abashidze parties apart',
-  'Seat the Chen party with the Smiths',
+  'Put the Chen party on the terrace',
 ]

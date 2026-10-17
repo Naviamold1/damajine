@@ -23,15 +23,16 @@ const GeminiReply = z.object({
 })
 
 const WINDOW_MS = 10 * 60 * 1000
-const MAX_PER_WINDOW = 30
-/** Per-instance, best-effort cap. Resets on cold start, which is fine for a demo. */
+const MAX_PER_WINDOW = 120
+/** Per-instance, best-effort cap. Resets on cold start, which is fine for a demo. Generous because a venue shares one IP. */
 const hits = new Map<string, number[]>()
 
 function rateLimited(ip: string, now = Date.now()): boolean {
   const recent = (hits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS)
-  recent.push(now)
-  hits.set(ip, recent)
-  return recent.length > MAX_PER_WINDOW
+  // Rejected calls are not recorded, so retrying while limited does not extend the lockout.
+  if (recent.length >= MAX_PER_WINDOW) return true
+  hits.set(ip, [...recent, now])
+  return false
 }
 
 const json = (body: unknown, status = 200) => Response.json(body, { status })

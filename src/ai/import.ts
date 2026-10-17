@@ -48,7 +48,7 @@ function toGuests(drafts: GuestDraft[], existing: Guest[]): Guest[] {
     let id = base
     for (let n = 2; taken.has(id); n++) id = `${base}-${n}`
     taken.add(id)
-    return Guest.parse({ ...draft, id, name: draft.name.trim() })
+    return Guest.parse({ ...draft, id, name: titleIfLower(draft.name.trim()) })
   })
 }
 
@@ -62,6 +62,10 @@ const NEED_PATTERNS: [GuestNeed, RegExp][] = [
   ['allergy', /\ballerg(?:y|ic|ies)\b|\bgluten\b|\bnut[- ]free\b/i],
   ['kid', /\bkids?\b|\bchild(?:ren)?\b|\bbaby\b/i],
 ]
+
+/** "luka chikovani" -> "Luka Chikovani"; names with any capital letter are kept as typed. */
+const titleIfLower = (name: string): string =>
+  name === name.toLowerCase() ? name.replace(/(^|[\s'-])(\p{L})/gu, (_, sep: string, ch: string) => sep + ch.toUpperCase()) : name
 
 /** Where the name ends: first separator or size/need keyword. */
 const NAME_END =

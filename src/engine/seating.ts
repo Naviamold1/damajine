@@ -26,6 +26,8 @@ export class Seating {
   private readonly rulesOf = new Map<string, Rule[]>()
   private readonly pinned: Set<string>
   private readonly original: Map<string, string> | undefined
+  /** Restaurant: a party gets its own table (bars stay shared). */
+  private readonly exclusive: boolean
   /** Together-blocks of unpinned guests, moved as one unit. */
   readonly units: string[][]
 
@@ -36,6 +38,7 @@ export class Seating {
     this.byId = new Map(this.seatables.map((s) => [s.id, s]))
     this.pinned = pinned
     this.original = original
+    this.exclusive = chart.kind === 'restaurant'
 
     // Keep only attending members; wheelchair users get an implicit accessible rule.
     const needs: Rule[] = attending
@@ -104,9 +107,16 @@ export class Seating {
     return (this.byId.get(sid)?.seats ?? 0) - (this.load.get(sid) ?? 0)
   }
 
-  /** Whether `ids` can move to `sid` without overfilling it. */
+  /** Whether `ids` can move to `sid` without overfilling it (or, in a restaurant, sharing it with another party). */
   fits(ids: string[], sid: string) {
-    return this.size(ids.filter((id) => this.seatOf.get(id) !== sid)) <= this.free(sid)
+    return this.size(ids.filter((id) => this.seatOf.get(id) !== sid)) <= this.free(sid) && !this.taken(sid, ids)
+  }
+
+  /** Restaurant only: someone other than `ids` already sits at this non-bar table. */
+  private taken(sid: string, ids: string[]) {
+    if (!this.exclusive || this.byId.get(sid)?.kind === 'bar') return false
+    const own = this.size(ids.filter((id) => this.seatOf.get(id) === sid))
+    return (this.load.get(sid) ?? 0) - own > 0
   }
 
   private ruleCost(rule: Rule): number {
@@ -244,6 +254,7 @@ export class Seating {
       if (!b || b === a) continue
       const sizeB = this.size(other)
       if (this.free(a) + sizeA < sizeB || this.free(b) + sizeB < sizeA) continue
+      if (this.taken(a, [...mover, ...other]) || this.taken(b, [...mover, ...other])) continue
       const ids = [...mover, ...other]
       const d = this.delta(ids, [...mover.map(() => b), ...other.map(() => a)])
       if (d < 0 && (!best || d < best.d)) {

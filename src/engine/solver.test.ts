@@ -34,6 +34,22 @@ describe('solve', () => {
     expect(res.violations).toEqual([])
   })
 
+  it('gives each restaurant party its own table, but shares the bar', () => {
+    const base = makeChart({
+      guests: [{ id: 'pinned', size: 2 }, { id: 'walkin', size: 1 }, { id: 'solo', size: 1 }],
+      tables: [{ id: 't1', seats: 4 }, { id: 't2', seats: 4 }, { id: 'bar', kind: 'bar', seats: 4 }],
+      assignments: [{ guestId: 'pinned', seatableId: 't1', pinned: true }],
+    })
+    const chart: Chart = { ...base, kind: 'restaurant', seatables: base.seatables.filter((s) => s.id !== 'bar') }
+    const tables = seats(solve(chart).assignments)
+    expect(tables.get('pinned')).toBe('t1')
+    expect(new Set([tables.get('walkin'), tables.get('solo')]).size).toBe(2)
+    expect(tables.get('walkin')).not.toBe('t1')
+
+    const barOnly: Chart = { ...base, kind: 'restaurant', assignments: [], seatables: base.seatables.filter((s) => s.id === 'bar') }
+    expect(solve(barOnly).unseated).toEqual([])
+  })
+
   it('keeps pins, seats wheelchair users accessibly, drops non-attending guests', () => {
     const chart = makeChart({
       guests: ['p', { id: 'w', needs: ['wheelchair'] }, { id: 'gone', attending: false }],

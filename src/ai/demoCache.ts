@@ -103,9 +103,9 @@ export const demoCache = new Map<string, unknown>([
     rules: [{ type: 'apart', guestIds: ['lomidze', 'abashidze'], hard: true }],
     explanation: 'The Lomidze and Abashidze parties sit at different tables.',
   }),
-  rules('Seat the Chen party with the Smiths', {
-    rules: [{ type: 'together', guestIds: ['chen', 'smith'], hard: true }],
-    explanation: 'The Chen party joins the Smiths.',
+  rules('Put the Chen party on the terrace', {
+    rules: [{ type: 'zone', guestIds: ['chen'], zone: 'terrace', hard: true }],
+    explanation: 'The Chen party gets a terrace table.',
   }),
 
   // Hackathon

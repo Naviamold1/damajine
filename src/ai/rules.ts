@@ -118,7 +118,7 @@ function rulesPrompt(text: string, chart: Chart): string {
     '- apart: guests must not share a table. together: guests share one table.',
     '- zone: guests sit at a table in that zone; use only a listed zone. accessible: guests need a step-free table.',
     '- Use only ids from the list. Groups like "the cousins" or "sales team" expand to every matching guest.',
-    '- hard=true for must/never, false for preferences like "near" or "spread".',
+    '- hard=true by default, including "with", "should" and "must". hard=false only for explicit preferences: "prefer", "ideally", "if possible", "try to", "spread".',
     '- If a name fits several guests and context does not decide, return no rules and list it in `ambiguous` with the candidate ids.',
     '- explanation: one short sentence naming the guests.',
     '',
