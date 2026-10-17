@@ -9,7 +9,7 @@ const work = 'Groom colleagues'
 
 /**
  * Nino and Giorgi's wedding: 8 round tables plus a head table, ~60 seats of guests.
- * Two tables sit by the dance floor (zone `near-dancefloor`), Table 5 is step-free.
+ * Tables 2 and 3 flank the dance floor (zone `near-dancefloor`), Table 5 is step-free.
  * There are deliberately two Ninos, two Levans and two Iraklis to demo the ask-back flow.
  */
 export const wedding = Chart.parse({
@@ -86,6 +86,11 @@ export const wedding = Chart.parse({
     { id: 't6', kind: 'round', label: 'Table 6', seats: 8, x: 470, y: 560 },
     { id: 't7', kind: 'round', label: 'Table 7', seats: 8, x: 730, y: 560 },
     { id: 't8', kind: 'round', label: 'Table 8', seats: 8, x: 990, y: 560 },
+  ],
+  decor: [
+    { id: 'dance-floor', label: 'Dance floor', x: 600, y: 300, w: 260, h: 200 },
+    { id: 'dj', label: 'Stage / DJ', x: 950, y: 90, w: 160, h: 60 },
+    { id: 'entrance', label: 'Entrance', x: 600, y: 760, w: 140, h: 40 },
   ],
   rules: [
     { id: 'apart:davit-beridze,tamar-beridze', type: 'apart', guestIds: ['tamar-beridze', 'davit-beridze'] },

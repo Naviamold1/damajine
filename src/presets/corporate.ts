@@ -10,7 +10,7 @@ const ops = 'Operations'
 
 /**
  * Year-end team dinner for 40 people. `group` is the team.
- * Two front rows face the stage (zone `near-stage`); six 6-top rect tables behind them, Table F is step-free.
+ * Two front rows face the stage and screen (zone `near-stage`); six 6-top rect tables behind them, Table F is step-free.
  * New hires are tagged `new-hire`, their mentors `mentor`.
  */
 export const corporate = Chart.parse({
@@ -72,6 +72,11 @@ export const corporate = Chart.parse({
     { id: 'table-d', kind: 'rect', label: 'Table D', seats: 6, x: 300, y: 600 },
     { id: 'table-e', kind: 'rect', label: 'Table E', seats: 6, x: 600, y: 600 },
     { id: 'table-f', kind: 'rect', label: 'Table F', seats: 6, x: 900, y: 600, accessible: true },
+  ],
+  decor: [
+    { id: 'screen', label: 'Screen', x: 600, y: 12, w: 300, h: 12 },
+    { id: 'stage', label: 'Stage', x: 600, y: 60, w: 400, h: 60 },
+    { id: 'entrance', label: 'Entrance', x: 600, y: 760, w: 140, h: 40 },
   ],
   rules: [
     {
