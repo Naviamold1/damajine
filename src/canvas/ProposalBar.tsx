@@ -13,7 +13,7 @@ export function ProposalBar() {
   const soft = proposal.violations.length - hard
   return (
     <div className="absolute bottom-3.5 left-1/2 flex max-w-[calc(100%-260px)] -translate-x-1/2 items-center gap-3.5 border border-moved bg-black px-2.5 py-1.5 whitespace-nowrap">
-      <span className="text-moved">{proposal.moved.length} moves</span>
+      <span className="text-moved">{proposal.moved.length} {proposal.moved.length === 1 ? 'move' : 'moves'}</span>
       {moves.slice(0, 3).map(({ guest, from, to }) => (
         <span key={guest.id}>
           {guest.name} <span className="text-dim">{from}</span> → {to}

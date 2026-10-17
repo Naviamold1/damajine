@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { Chart } from '@/domain/types'
 import { footprint } from '@/domain/geometry'
+import { findViolations } from '@/engine/solver'
 import { demoCache, demoKey } from '@/ai/demoCache'
 import { validateRules } from '@/ai/rules'
 import { presets } from '.'
@@ -61,6 +62,13 @@ describe.each(Object.entries(presets))('%s preset', (_, { chart, ruleTemplates }
       if (cached === undefined) continue
       expect(() => validateRules(CachedRules.parse(cached).rules, chart), text).not.toThrow()
     }
+  })
+
+  it('starts with only late arrivals unseated and no hard violations', () => {
+    const seated = new Set(chart.assignments.map((a) => a.guestId))
+    const unseated = chart.guests.filter((g) => !seated.has(g.id))
+    expect(unseated.every((g) => g.tags.includes('late') || g.tags.includes('walk-in'))).toBe(true)
+    expect(findViolations(chart).filter((v) => v.hard)).toEqual([])
   })
 
   it('only references ids that exist', () => {

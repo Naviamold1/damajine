@@ -37,7 +37,7 @@ const pinTeam = (team: string, seatableId: string) => ids(team).map((guestId) =>
  * HACKTOBERFEST Georgia 2026 in a library reading room in Tbilisi: 11 teams of 3-5 at twelve 6-seat tables,
  * plus mentors, judges and organizers. Front row tables face the stage (zone `near-stage`), the left column
  * sits by the shelves (`quiet-corner`), the right column by the wall sockets (`near-power`). T10 is step-free.
- * Tamada and Null Pointers have already claimed tables (pinned). Ana joined Svaneti Signal this morning,
+ * Tamada, Null Pointers and Svaneti Signal have already claimed tables (pinned); staff are pinned to their own tables. Ana joined Svaneti Signal this morning,
  * so the team rule does not include her yet (demo: "Seat Ana with her team").
  */
 export const hackathon = Chart.parse({
@@ -61,7 +61,7 @@ export const hackathon = Chart.parse({
     guest('Maka Gorgadze', { group: 'Organizers', tags: ['organizer'] }),
   ],
   seatables: [
-    { id: 'judges', kind: 'rect', label: 'Judges', seats: 4, x: 600, y: 160, zone: 'near-stage' },
+    { id: 'judges', kind: 'rect', label: 'Judges', seats: 3, x: 600, y: 160, zone: 'near-stage' },
     { id: 't1', kind: 'rect', label: 'T1', seats: 6, x: 240, y: 270, zone: 'near-stage' },
     { id: 't2', kind: 'rect', label: 'T2', seats: 6, x: 480, y: 270, zone: 'near-stage' },
     { id: 't3', kind: 'rect', label: 'T3', seats: 6, x: 720, y: 270, zone: 'near-stage' },
@@ -74,8 +74,8 @@ export const hackathon = Chart.parse({
     { id: 't10', kind: 'rect', label: 'T10', seats: 6, x: 480, y: 570, accessible: true },
     { id: 't11', kind: 'rect', label: 'T11', seats: 6, x: 720, y: 570 },
     { id: 't12', kind: 'rect', label: 'T12', seats: 6, x: 960, y: 570, zone: 'near-power' },
-    { id: 'mentors', kind: 'rect', label: 'Mentors', seats: 6, x: 360, y: 710 },
-    { id: 'organizers', kind: 'rect', label: 'Organizers', seats: 4, x: 840, y: 710 },
+    { id: 'mentors', kind: 'rect', label: 'Mentors', seats: 3, x: 360, y: 710 },
+    { id: 'organizers', kind: 'rect', label: 'Organizers', seats: 3, x: 840, y: 710 },
   ],
   decor: [
     { id: 'screen', label: 'Demo screen', x: 600, y: 15, w: 280, h: 14 },
@@ -99,9 +99,12 @@ export const hackathon = Chart.parse({
   assignments: [
     ...pinTeam('Tamada', 't6'),
     ...pinTeam('Null Pointers', 't9'),
+    ...pinTeam('Svaneti Signal', 't7'),
     { guestId: 'rusudan-kurtsikidze', seatableId: 'judges', pinned: true },
     { guestId: 'levan-ramishvili', seatableId: 'judges', pinned: true },
     { guestId: 'sarah-mitchell', seatableId: 'judges', pinned: true },
+    ...['nana-lordkipanidze', 'zura-kiknadze', 'tinatin-mgeladze'].map((guestId) => ({ guestId, seatableId: 'mentors', pinned: true })),
+    ...['eka-chikvaidze', 'beka-tsulukidze', 'maka-gorgadze'].map((guestId) => ({ guestId, seatableId: 'organizers', pinned: true })),
   ],
 })
 

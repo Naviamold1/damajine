@@ -1,5 +1,6 @@
 import type { z } from 'zod'
-import type { Guest } from '@/domain/types'
+import type { Chart, Guest } from '@/domain/types'
+import { solve } from '@/engine/solver'
 
 type GuestInput = z.input<typeof Guest>
 
@@ -18,3 +19,12 @@ export const guest = (name: string, rest: Omit<GuestInput, 'id' | 'name'> = {}):
   name,
   ...rest,
 })
+
+/**
+ * Preset starting state: everyone seated by the solver except late arrivals (tag `late` or `walk-in`),
+ * so a demo rule shows a small diff instead of seating the whole room.
+ */
+export function seeded(chart: Chart): Chart {
+  const late = (g: Guest) => g.tags.includes('late') || g.tags.includes('walk-in')
+  return { ...chart, assignments: solve({ ...chart, guests: chart.guests.filter((g) => !late(g)) }).assignments }
+}
