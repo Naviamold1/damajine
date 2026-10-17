@@ -2,8 +2,13 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { emptyChart, type Assignment, type Chart, type Guest, type Proposal, type Rule, type Seatable } from '@/domain/types'
 
+/** An event made with "New event": a chart that always has an `id`. */
+export type SavedEvent = Chart & { id: string }
+
 type ChartState = {
   chart: Chart
+  /** The user's own events, in creation order. Kept in sync with `chart` while one is open. */
+  events: SavedEvent[]
   past: Chart[]
   future: Chart[]
   /** Pending solver/AI change shown as an overlay. Not part of undo history until kept. */
@@ -13,8 +18,14 @@ type ChartState = {
   undo: () => void
   redo: () => void
 
-  /** Replace the whole chart (preset switch, import). Undoable. */
+  /** Replace the whole chart (preset switch, saved event switch). Undoable. */
   loadChart: (chart: Chart) => void
+  /** Open a brand new event and add it to `events`. Undoable; undo goes back but the event stays saved. */
+  createEvent: (chart: SavedEvent) => void
+  /** Rename the open chart. Undoable, and synced into `events` like any edit. */
+  renameChart: (name: string) => void
+  /** Forget a saved event. Not undoable; the header confirms first and switches away if it is open. */
+  deleteEvent: (id: string) => void
   addGuest: (guest: Guest) => void
   /** Add many guests as one undo step (import). */
   addGuests: (guests: Guest[]) => void
@@ -37,15 +48,25 @@ type ChartState = {
 
 const HISTORY_LIMIT = 100
 
+/** Write the open chart back into its saved event, if it is one, so switching away and back keeps every edit. */
+function synced(events: SavedEvent[], chart: Chart): SavedEvent[] {
+  const { id } = chart
+  return id ? events.map((e) => (e.id === id ? { ...chart, id } : e)) : events
+}
+
 export const useChart = create<ChartState>()(
   persist(
     (set, get) => {
       // Any edit makes a pending proposal stale (it was computed against the old chart), so drop it.
       const commit: ChartState['commit'] = (update) =>
-        set((s) => ({ chart: update(s.chart), past: [...s.past, s.chart].slice(-HISTORY_LIMIT), future: [], proposal: null }))
+        set((s) => {
+          const chart = update(s.chart)
+          return { chart, events: synced(s.events, chart), past: [...s.past, s.chart].slice(-HISTORY_LIMIT), future: [], proposal: null }
+        })
 
       return {
         chart: emptyChart(),
+        events: [],
         past: [],
         future: [],
         proposal: null,
@@ -53,15 +74,21 @@ export const useChart = create<ChartState>()(
         undo: () =>
           set((s) => {
             const prev = s.past.at(-1)
-            return prev ? { chart: prev, past: s.past.slice(0, -1), future: [s.chart, ...s.future], proposal: null } : s
+            return prev ? { chart: prev, events: synced(s.events, prev), past: s.past.slice(0, -1), future: [s.chart, ...s.future], proposal: null } : s
           }),
         redo: () =>
           set((s) => {
             const [next, ...rest] = s.future
-            return next ? { chart: next, past: [...s.past, s.chart], future: rest, proposal: null } : s
+            return next ? { chart: next, events: synced(s.events, next), past: [...s.past, s.chart], future: rest, proposal: null } : s
           }),
 
         loadChart: (chart) => commit(() => chart),
+        createEvent: (chart) => {
+          set((s) => ({ events: [...s.events, chart] }))
+          commit(() => chart)
+        },
+        renameChart: (name) => commit((c) => ({ ...c, name })),
+        deleteEvent: (id) => set((s) => ({ events: s.events.filter((e) => e.id !== id) })),
         addGuest: (guest) => commit((c) => ({ ...c, guests: [...c.guests, guest] })),
         addGuests: (guests) => commit((c) => ({ ...c, guests: [...c.guests, ...guests] })),
         removeGuest: (guestId) =>
@@ -108,6 +135,6 @@ export const useChart = create<ChartState>()(
         revertProposal: () => set({ proposal: null }),
       }
     },
-    { name: 'damajine-chart', partialize: (s) => ({ chart: s.chart }) },
+    { name: 'damajine-chart', partialize: (s) => ({ chart: s.chart, events: s.events }) },
   ),
 )

@@ -72,6 +72,8 @@ export const Assignment = z.object({
 export type Assignment = z.infer<typeof Assignment>
 
 export const Chart = z.object({
+  /** Set only on events made with "New event"; keys them in the store's saved `events`. Demo presets have none. */
+  id: z.string().optional(),
   kind: EventKind,
   name: z.string(),
   guests: z.array(Guest),

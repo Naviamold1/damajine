@@ -27,8 +27,8 @@ export function severities(violations: Violation[]) {
 
 /** The demo preset the chart came from (by name), for the header switcher and its rule templates. Undefined for events made with "New event". */
 export function presetOf(chart: Chart) {
-  const all = Object.values(presets)
-  return all.find((p) => p.chart.name === chart.name)
+  if (chart.id) return undefined
+  return Object.values(presets).find((p) => p.chart.name === chart.name)
 }
 
 const NEED_SHORT: Record<Guest['needs'][number], string> = {

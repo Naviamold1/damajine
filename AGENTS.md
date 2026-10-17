@@ -1,6 +1,6 @@
 # Damajine
 
-Seating canvas for any gathering: weddings, corporate events, restaurants, hackathons, auditoriums, trains. One engine, six demo presets, plus "New event" to start from an empty room. Gemini turns plain language into rules; a deterministic solver does the seating. Built for HACKTOBERFEST Georgia 2026 (17-18 Oct), so speed and a working demo beat polish. See `PLAN.md` for phases and the demo.
+Seating canvas for any gathering: weddings, corporate events, restaurants, hackathons, auditoriums, trains. One engine, six demo presets, plus "New event" to start from a blank room or a preset's room (saved under "Yours" in the header). Gemini turns plain language into rules; a deterministic solver does the seating. Built for HACKTOBERFEST Georgia 2026 (17-18 Oct), so speed and a working demo beat polish. See `PLAN.md` for phases and the demo.
 
 ## Commands
 

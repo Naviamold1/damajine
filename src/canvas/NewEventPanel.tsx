@@ -1,22 +1,33 @@
 import { useState } from 'react'
-import { emptyChart, type EventKind } from '@/domain/types'
+import { emptyChart } from '@/domain/types'
+import { presets, type PresetId } from '@/presets'
 import { useChart } from '@/store/chart'
 import { Icon } from './icons'
 import { useUi } from './ui'
 
-const KINDS: { kind: EventKind; emoji: string; label: string }[] = [
-  { kind: 'wedding', emoji: '💍', label: 'Wedding' },
-  { kind: 'corporate', emoji: '💼', label: 'Corporate' },
-  { kind: 'restaurant', emoji: '🍽️', label: 'Restaurant' },
-  { kind: 'hackathon', emoji: '💻', label: 'Hackathon' },
-  { kind: 'auditorium', emoji: '🎭', label: 'Auditorium' },
-  { kind: 'train', emoji: '🚆', label: 'Train' },
-  { kind: 'custom', emoji: '✨', label: 'Other' },
+type Template = 'blank' | PresetId
+
+const EMOJI: Record<Template, string> = {
+  blank: '📄',
+  wedding: '💍',
+  corporate: '💼',
+  restaurant: '🍽️',
+  hackathon: '💻',
+  auditorium: '🎭',
+  train: '🚆',
+}
+
+/** Blank first, then every demo preset in display order. */
+const TEMPLATES: { id: Template; label: string }[] = [
+  { id: 'blank', label: 'Blank' },
+  ...Object.entries(presets).map(([id, p]) => ({ id: id as PresetId, label: p.label })),
 ]
 
 /**
- * "New event" dialog from the header: name and event kind (passed to the AI and the solver), starting from an empty room.
- * Creating is one undo step. "Create from image" is a placeholder with no logic yet.
+ * "New event" dialog from the header: a name and a starting room. Blank is an empty room; a preset copies that
+ * demo's tables and decor (no guests or rules) and its kind, which the AI and solver use.
+ * The event is saved to the store's `events` and shows under "Yours" in the header. Creating is one undo step.
+ * "Create from image" is a placeholder with no logic yet.
  */
 export function NewEventPanel() {
   const open = useUi((s) => s.newOpen)
@@ -26,11 +37,14 @@ export function NewEventPanel() {
 
 function NewEventPanelOpen() {
   const [name, setName] = useState('')
-  const [kind, setKind] = useState<EventKind>('wedding')
+  const [template, setTemplate] = useState<Template>('blank')
   const close = () => useUi.getState().setNewOpen(false)
 
   const create = () => {
-    useChart.getState().loadChart(emptyChart(kind, name.trim() || 'My event'))
+    const title = name.trim() || 'My event'
+    const preset = template === 'blank' ? null : presets[template].chart
+    const room = preset ? { ...emptyChart(preset.kind, title), seatables: preset.seatables, decor: preset.decor } : emptyChart('custom', title)
+    useChart.getState().createEvent({ ...room, id: crypto.randomUUID() })
     useUi.getState().selectGuest(null)
     close()
   }
@@ -73,14 +87,14 @@ function NewEventPanelOpen() {
         </div>
 
         <div className="grid grid-cols-4 gap-2 px-5 pt-4">
-          {KINDS.map((k) => (
+          {TEMPLATES.map((t) => (
             <button
-              key={k.kind}
-              className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-left font-medium ring-1 ${kind === k.kind ? 'bg-wine-soft text-wine ring-wine' : 'ring-line hover:bg-floor'}`}
-              onClick={() => setKind(k.kind)}
+              key={t.id}
+              className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-left font-medium ring-1 ${template === t.id ? 'bg-wine-soft text-wine ring-wine' : 'ring-line hover:bg-floor'}`}
+              onClick={() => setTemplate(t.id)}
             >
-              <span className="text-[18px]">{k.emoji}</span>
-              {k.label}
+              <span className="text-[18px]">{EMOJI[t.id]}</span>
+              {t.label}
             </button>
           ))}
         </div>
