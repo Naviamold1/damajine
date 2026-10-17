@@ -12,7 +12,7 @@ import { GUEST_DRAG, isTyping, useUi } from './ui'
 import { useViewport, type View } from './useViewport'
 
 /** Seat chip radius in canvas units. Seat spacing in `seatOffsets` leaves room for it. */
-const CHIP = 10.5
+export const CHIP = 10.5
 
 type Gesture =
   | { kind: 'pan'; client: Point; view: View; moved: boolean }

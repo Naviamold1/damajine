@@ -1,10 +1,14 @@
 import type { Guest } from '@/domain/types'
 import { useChart } from '@/store/chart'
-import { guestTags } from './derived'
+import { CHIP } from './Canvas'
+import { groupTint, guestTags, initials } from './derived'
+import { chartBounds, layoutSlots, seatOffsets, toCanvas } from './layout'
+import { SeatableShape } from './SeatableShape'
 
 /**
  * Print-only chart (hidden on screen, shown by `print:block`): event name, guests per table
- * in columns, then an alphabetical "find your seat" index. Header "Print" calls window.print().
+ * in columns, an alphabetical "find your seat" index, then the seating map on its own last page.
+ * Header "Print" calls window.print().
  */
 export function PrintView() {
   const chart = useChart((s) => s.chart)
@@ -59,6 +63,60 @@ export function PrintView() {
           </li>
         ))}
       </ol>
+      <PrintMap />
     </div>
+  )
+}
+
+/** Room padding around the map, in canvas units. */
+const MAP_PAD = 24
+
+/**
+ * Last print page: the room as drawn on the canvas (decor, tables, seat chips with initials), scaled to fit
+ * the page in either orientation without distortion (viewBox keeps the aspect ratio; height follows the
+ * page orientation). Plain chart only: no violations, selection or proposal.
+ */
+function PrintMap() {
+  const chart = useChart((s) => s.chart)
+  const bounds = chartBounds(chart)
+  if (!bounds) return null
+  const slots = layoutSlots(chart, chart.assignments)
+  const used = (id: string) => (slots.get(id) ?? []).filter(Boolean).length
+  const { minX, minY, maxX, maxY } = bounds
+  const viewBox = `${minX - MAP_PAD} ${minY - MAP_PAD} ${maxX - minX + MAP_PAD * 2} ${maxY - minY + MAP_PAD * 2}`
+
+  return (
+    <section className="break-before-page">
+      <h2 className="mb-1 text-[16px] font-bold">Seating map</h2>
+      {/* CSS filter:none overrides the canvas drop shadow (filter attribute), which prints poorly. */}
+      <svg viewBox={viewBox} className="block h-[165mm] w-full portrait:h-[225mm] [&_*]:[filter:none]">
+        {chart.decor.map((d) => (
+          <g key={d.id}>
+            <rect x={d.x - d.w / 2} y={d.y - d.h / 2} width={d.w} height={d.h} rx={10} className="fill-[#e2e5ed] stroke-[#cfd3de] [stroke-width:1.5]" />
+            <text x={d.x} y={d.y + 4} textAnchor="middle" className="fill-faint font-display text-[12px] font-bold tracking-[0.12em] uppercase">
+              {d.label}
+            </text>
+          </g>
+        ))}
+        {chart.seatables.map((s) => (
+          <SeatableShape key={s.id} s={s} used={used(s.id)} tone={null} />
+        ))}
+        {chart.seatables.map((s) =>
+          seatOffsets(s).map((off, i) => {
+            const p = toCanvas(s, off)
+            const slot = slots.get(s.id)?.[i]
+            if (!slot) return <circle key={`${s.id}-${i}`} cx={p.x} cy={p.y} r={CHIP - 1} className="fill-white stroke-[#c4c8d4] [stroke-dasharray:3_3] [stroke-width:1.2]" />
+            return (
+              <g key={`${s.id}-${i}`}>
+                <circle cx={p.x} cy={p.y} r={CHIP} className="stroke-ink/25" style={{ fill: groupTint(slot.guest.group) }} />
+                <text x={p.x} y={p.y + 3.2} textAnchor="middle" className={`fill-ink font-display text-[9px] font-bold ${slot.first ? '' : 'opacity-40'}`}>
+                  {slot.first ? initials(slot.guest.name) : '+'}
+                </text>
+              </g>
+            )
+          }),
+        )}
+      </svg>
+    </section>
   )
 }

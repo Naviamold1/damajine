@@ -10,9 +10,9 @@ const STROKE: Record<NonNullable<Tone>, string> = { hard: 'stroke-hard', soft: '
 /**
  * Table body for one seatable, drawn by kind with `footprint()` sizes and rotation.
  * Labels are placed in canvas space so they stay upright. Seat chips are drawn by the canvas on top.
- * Uses the `lift` shadow filter defined in the canvas `<defs>`.
+ * Uses the `lift` shadow filter defined in the canvas `<defs>`. The print map draws it without a pointer handler.
  */
-export function SeatableShape({ s, used, tone, onPointerDown }: { s: Seatable; used: number; tone: Tone; onPointerDown: (e: PointerEvent) => void }) {
+export function SeatableShape({ s, used, tone, onPointerDown }: { s: Seatable; used: number; tone: Tone; onPointerDown?: (e: PointerEvent) => void }) {
   const { w, h } = footprint(s)
   const stroke = tone ? `${STROKE[tone]} [stroke-width:2.5]` : 'stroke-[#d5d8e2] [stroke-width:1.5]'
   const fill = tone === 'drop' ? 'fill-wine-soft' : 'fill-white'
