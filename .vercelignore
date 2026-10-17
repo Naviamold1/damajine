@@ -1,0 +1,5 @@
+.env*
+!.env.example
+.claude
+dist
+node_modules
