@@ -12,3 +12,11 @@
 :root { color-scheme: dark; scrollbar-color: #333 #000; }
 html, body, #root { height: 100%; }
 body { margin: 0; background: #000; color: #fff; font-size: 13px; line-height: 1.4; }
+
+/* Print: white page, only PrintView renders (app chrome is print:hidden). */
+@media print {
+  :root { color-scheme: light; }
+  html, body, #root { height: auto; }
+  body { background: #fff; color: #000; }
+  @page { margin: 12mm; }
+}

@@ -16,6 +16,8 @@ type ChartState = {
   /** Replace the whole chart (preset switch, import). Undoable. */
   loadChart: (chart: Chart) => void
   addGuest: (guest: Guest) => void
+  /** Add many guests as one undo step (import). */
+  addGuests: (guests: Guest[]) => void
   removeGuest: (guestId: string) => void
   /** Seat a guest at a seatable, or unseat with `null`. Keeps the pin flag if already seated. */
   moveGuest: (guestId: string, seatableId: string | null) => void
@@ -61,6 +63,7 @@ export const useChart = create<ChartState>()(
 
         loadChart: (chart) => commit(() => chart),
         addGuest: (guest) => commit((c) => ({ ...c, guests: [...c.guests, guest] })),
+        addGuests: (guests) => commit((c) => ({ ...c, guests: [...c.guests, ...guests] })),
         removeGuest: (guestId) =>
           commit((c) => ({
             ...c,

@@ -7,18 +7,22 @@ type UiState = {
   /** Seatable highlighted on the canvas (selected directly, or the selected guest's table). */
   seatableId: string | null
   commandOpen: boolean
+  importOpen: boolean
   selectGuest: (guestId: string | null, seatableId?: string | null) => void
   selectSeatable: (seatableId: string | null) => void
   setCommandOpen: (open: boolean) => void
+  setImportOpen: (open: boolean) => void
 }
 
 export const useUi = create<UiState>()((set) => ({
   guestId: null,
   seatableId: null,
   commandOpen: false,
+  importOpen: false,
   selectGuest: (guestId, seatableId = null) => set({ guestId, seatableId }),
   selectSeatable: (seatableId) => set({ seatableId, guestId: null }),
   setCommandOpen: (commandOpen) => set({ commandOpen }),
+  setImportOpen: (importOpen) => set({ importOpen, commandOpen: false }),
 }))
 
 /** MIME type for dragging a guest from the sidebar onto the canvas. */
