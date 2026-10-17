@@ -1,14 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { Chart, type Seatable } from '@/domain/types'
+import { footprint } from '@/domain/geometry'
 import { presets } from '.'
 
-/** Rough footprint per kind, matching the sizes the presets were laid out with. */
 function box(s: Seatable) {
-  const [w, h] =
-    s.kind === 'round' ? [120, 120]
-    : s.kind === 'rect' ? [Math.max(120, s.seats * 25), 50]
-    : s.kind === 'booth' ? [100, 60]
-    : [Math.max(40, s.seats * 30), 40]
+  const { w, h } = footprint(s)
   return { left: s.x - w / 2, right: s.x + w / 2, top: s.y - h / 2, bottom: s.y + h / 2 }
 }
 

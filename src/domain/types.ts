@@ -6,7 +6,7 @@ import { z } from 'zod'
  * Gemini output is validated against the same schemas before it touches the store.
  */
 
-export const EventKind = z.enum(['wedding', 'corporate', 'restaurant', 'custom'])
+export const EventKind = z.enum(['wedding', 'corporate', 'restaurant', 'hackathon', 'auditorium', 'custom'])
 export type EventKind = z.infer<typeof EventKind>
 
 export const GuestNeed = z.enum(['wheelchair', 'vegetarian', 'vegan', 'allergy', 'kid'])
@@ -43,6 +43,17 @@ export const Seatable = z.object({
 })
 export type Seatable = z.infer<typeof Seatable>
 
+/** Non-seatable room feature drawn on the canvas (stage, dance floor, screen, shelves). x/y is the center; the solver ignores it. */
+export const Decor = z.object({
+  id: z.string(),
+  label: z.string(),
+  x: z.number(),
+  y: z.number(),
+  w: z.number().positive(),
+  h: z.number().positive(),
+})
+export type Decor = z.infer<typeof Decor>
+
 export const Rule = z.discriminatedUnion('type', [
   z.object({ id: z.string(), type: z.literal('apart'), guestIds: z.array(z.string()).min(2), hard: z.boolean().default(true) }),
   z.object({ id: z.string(), type: z.literal('together'), guestIds: z.array(z.string()).min(2), hard: z.boolean().default(true) }),
@@ -65,6 +76,7 @@ export const Chart = z.object({
   name: z.string(),
   guests: z.array(Guest),
   seatables: z.array(Seatable),
+  decor: z.array(Decor).default([]),
   rules: z.array(Rule),
   assignments: z.array(Assignment),
 })
@@ -104,6 +116,7 @@ export const emptyChart = (kind: EventKind = 'custom', name = 'Untitled'): Chart
   name,
   guests: [],
   seatables: [],
+  decor: [],
   rules: [],
   assignments: [],
 })
