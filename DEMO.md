@@ -8,7 +8,7 @@ Three demos, about 90 seconds each. Live site: https://damajine.vercel.app
 - Browser zoom 100% on a laptop screen. On a 1080p projector use 125% (Ctrl +), then click **Fit** (bottom right of the canvas).
 - The proxy allows 120 Gemini calls per 10 minutes per IP, and the whole venue may share one IP. Avoid heavy testing right before you present. If live prompts suddenly answer instantly with "I could not turn that into a rule", you are rate limited: switch to safe prompts or a phone hotspot.
 - The proxy uses `gemini-3.5-flash-lite` unless `GEMINI_MODEL` is set in Vercel. Do not switch to `gemini-3.8-flash` on this key: its quota runs out (HTTP 429).
-- Gemini answers in about 1 to 1.5 s (first call after idle up to 3 s). One warm-up prompt a few minutes before is fine. If it fails, the app falls back to the demo cache, then to the offline parser. If it hangs, the fallback kicks in after 6 s.
+- Gemini answers in about 1 to 1.5 s (first call after idle up to 3 s). One warm-up prompt a few minutes before is fine. The safe prompts below answer from the demo cache without calling Gemini, so they always give the scripted result. Anything else goes to Gemini; if that fails, the app falls back to the offline parser. If it hangs, the fallback kicks in after 6 s.
 - Local fallback with no network: `VITE_AI_OFFLINE=1 pnpm dev`. Safe prompts and import work the same; wow prompts do not.
 - Reset a preset: click its name in the header (Wedding, Hackathon, Restaurant). Ctrl+Z undoes the reset. Full reset: new incognito window.
 - Do not click **Solve all** on Wedding or Hackathon. It reseats everyone from scratch (46 moves on Wedding) and leaves the dance-floor tables empty.

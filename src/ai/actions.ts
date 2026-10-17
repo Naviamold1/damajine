@@ -564,6 +564,7 @@ function planPrompt(text: string, chart: Chart): string {
     '- "Make table 3 a 12 seater called VIP" -> [{"type":"updateTable","tableIds":["t3"],"seats":12,"label":"VIP"}]',
     '- "Give table 5 two more seats and rename it Family" (table 5 has 8) -> [{"type":"updateTable","tableIds":["t5"],"seats":10,"label":"Family"}]',
     '- "Add a 10-seat round table by the stage for the band" -> [{"type":"addTable","kind":"round","seats":10,"label":"Band table","near":"stage"},{"type":"seat","guestIds":["ana-band","leo-band"],"tableId":"Band table"}]',
+    '- "Seat Anna with Bob" -> [{"type":"together","guestIds":["anna-smith","bob-lee"],"hard":true}] (a rule, even if they already share a table)',
     '- "Who sits with Anna?" -> [{"type":"answer","text":"Anna Smith sits at Table 2 with Bob Lee and Cara Diaz."}]',
     '- "Even out the tables and keep Bob away from Carl" -> [{"type":"balance"},{"type":"apart","guestIds":["bob-lee","carl-ray"],"hard":true}]',
     '- If a name fits several guests and context does not decide, return no actions and list it in `ambiguous` with the candidate ids.',

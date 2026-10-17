@@ -14,9 +14,9 @@ export type PresetId = 'wedding' | 'corporate' | 'restaurant' | 'hackathon' | 'a
  * `ruleTemplates` are example prompts for the rule box (cached for offline demos).
  */
 export const presets: Record<PresetId, { label: string; chart: Chart; ruleTemplates: string[] }> = {
+  restaurant: { label: 'Restaurant', chart: restaurant, ruleTemplates: restaurantRuleTemplates },
   wedding: { label: 'Wedding', chart: seeded(wedding), ruleTemplates: weddingRuleTemplates },
   corporate: { label: 'Corporate', chart: seeded(corporate), ruleTemplates: corporateRuleTemplates },
-  restaurant: { label: 'Restaurant', chart: restaurant, ruleTemplates: restaurantRuleTemplates },
   hackathon: { label: 'Hackathon', chart: seeded(hackathon), ruleTemplates: hackathonRuleTemplates },
   auditorium: { label: 'Auditorium', chart: seeded(auditorium), ruleTemplates: auditoriumRuleTemplates },
   train: { label: 'Train', chart: seeded(train), ruleTemplates: trainRuleTemplates },

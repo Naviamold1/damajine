@@ -33,14 +33,14 @@ export const toGeminiSchema = (schema: z.ZodType): unknown => geminiSchema(z.toJ
 
 const ProxyResponse = z.object({ data: z.unknown() })
 
-/** Give up on a slow Gemini call so the demo falls back to the cache or offline parser instead of stalling. */
+/** Give up on a slow Gemini call so the demo falls back to the offline parser instead of stalling. */
 const TIMEOUT_MS = 6000
 
 /**
  * Ask Gemini (via /api/gemini) for JSON matching `schema`, and validate it.
- * `cacheText` is the user's own words (not the full prompt); it keys the demo cache, which answers
- * first when VITE_AI_OFFLINE=1 and as a fallback when the network call fails or times out. Throws if neither works,
- * so callers can fall back to their deterministic parser.
+ * `cacheText` is the user's own words (not the full prompt); it keys the demo cache. A cached prompt answers from
+ * the cache without calling Gemini, so the scripted demo prompts always give the scripted result; anything else goes
+ * to Gemini (or throws when VITE_AI_OFFLINE=1). Throws on failure so callers can fall back to their deterministic parser.
  */
 export async function callGemini<S extends z.ZodType>(
   task: AiTask,
@@ -49,21 +49,14 @@ export async function callGemini<S extends z.ZodType>(
   cacheText = prompt,
 ): Promise<z.output<S>> {
   const cached = demoCache.get(demoKey(task, cacheText))
-  if (import.meta.env.VITE_AI_OFFLINE === '1') {
-    if (cached === undefined) throw new Error('AI is offline and this prompt is not cached')
-    return schema.parse(cached)
-  }
-  try {
-    const res = await fetch('/api/gemini', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ task, prompt, schema: toGeminiSchema(schema) }),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    })
-    if (!res.ok) throw new Error(`Gemini proxy returned ${res.status}`)
-    return schema.parse(ProxyResponse.parse(await res.json()).data)
-  } catch (error) {
-    if (cached !== undefined) return schema.parse(cached)
-    throw error
-  }
+  if (cached !== undefined) return schema.parse(cached)
+  if (import.meta.env.VITE_AI_OFFLINE === '1') throw new Error('AI is offline and this prompt is not cached')
+  const res = await fetch('/api/gemini', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ task, prompt, schema: toGeminiSchema(schema) }),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  })
+  if (!res.ok) throw new Error(`Gemini proxy returned ${res.status}`)
+  return schema.parse(ProxyResponse.parse(await res.json()).data)
 }
