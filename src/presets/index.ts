@@ -4,9 +4,10 @@ import { auditorium, auditoriumRuleTemplates } from './auditorium'
 import { corporate, corporateRuleTemplates } from './corporate'
 import { hackathon, hackathonRuleTemplates } from './hackathon'
 import { restaurant, restaurantRuleTemplates } from './restaurant'
+import { train, trainRuleTemplates } from './train'
 import { wedding, weddingRuleTemplates } from './wedding'
 
-export type PresetId = 'wedding' | 'corporate' | 'restaurant' | 'hackathon' | 'auditorium'
+export type PresetId = 'wedding' | 'corporate' | 'restaurant' | 'hackathon' | 'auditorium' | 'train'
 
 /**
  * Demo presets for the preset switcher, in display order. Charts start seated except late arrivals (restaurant is hand-seated).
@@ -18,4 +19,5 @@ export const presets: Record<PresetId, { label: string; chart: Chart; ruleTempla
   restaurant: { label: 'Restaurant', chart: restaurant, ruleTemplates: restaurantRuleTemplates },
   hackathon: { label: 'Hackathon', chart: seeded(hackathon), ruleTemplates: hackathonRuleTemplates },
   auditorium: { label: 'Auditorium', chart: seeded(auditorium), ruleTemplates: auditoriumRuleTemplates },
+  train: { label: 'Train', chart: seeded(train), ruleTemplates: trainRuleTemplates },
 }

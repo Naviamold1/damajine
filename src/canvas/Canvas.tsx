@@ -255,6 +255,14 @@ export function Canvas() {
         </g>
       </svg>
 
+      {chart.seatables.length === 0 && (
+        <div className="pointer-events-none absolute inset-0 grid place-items-center">
+          <div className="max-w-xs text-center">
+            <div className="font-display text-[22px] font-bold">An empty room</div>
+            <p className="pt-1 text-dim">Add tables from the top right, then drag them where they stand in the room.</p>
+          </div>
+        </div>
+      )}
       <Legend />
       <Palette center={() => { const r = svgRef.current?.getBoundingClientRect(); return clientToCanvas((r?.left ?? 0) + (r?.width ?? 0) / 2, (r?.top ?? 0) + (r?.height ?? 0) / 2) }} />
       <div className="absolute right-4 bottom-4 flex items-center rounded-xl bg-white p-1 text-dim shadow-island">

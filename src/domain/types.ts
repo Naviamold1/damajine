@@ -6,7 +6,7 @@ import { z } from 'zod'
  * Gemini output is validated against the same schemas before it touches the store.
  */
 
-export const EventKind = z.enum(['wedding', 'corporate', 'restaurant', 'hackathon', 'auditorium', 'custom'])
+export const EventKind = z.enum(['wedding', 'corporate', 'restaurant', 'hackathon', 'auditorium', 'train', 'custom'])
 export type EventKind = z.infer<typeof EventKind>
 
 export const GuestNeed = z.enum(['wheelchair', 'vegetarian', 'vegan', 'allergy', 'kid'])

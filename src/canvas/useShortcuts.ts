@@ -12,12 +12,12 @@ export function useShortcuts() {
       const mod = e.ctrlKey || e.metaKey
       const key = e.key.toLowerCase()
       const ui = useUi.getState()
-      if (mod && key === 'k' && !ui.importOpen) {
+      if (mod && key === 'k' && !ui.importOpen && !ui.newOpen) {
         e.preventDefault()
         ui.setCommandOpen(!ui.commandOpen)
         return
       }
-      if (isTyping() || ui.commandOpen || ui.importOpen) return
+      if (isTyping() || ui.commandOpen || ui.importOpen || ui.newOpen) return
       const chart = useChart.getState()
       if (mod && key === 'z') {
         e.preventDefault()

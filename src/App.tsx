@@ -2,11 +2,12 @@ import { Canvas } from './canvas/Canvas'
 import { CommandBar } from './canvas/CommandBar'
 import { Header } from './canvas/Header'
 import { ImportPanel } from './canvas/ImportPanel'
+import { NewEventPanel } from './canvas/NewEventPanel'
 import { PrintView } from './canvas/PrintView'
 import { Sidebar } from './canvas/Sidebar'
 import { useShortcuts } from './canvas/useShortcuts'
 
-/** App shell: header, guest sidebar on the left, canvas on the right, command bar and import overlays. Print shows only PrintView. */
+/** App shell: header, guest sidebar on the left, canvas on the right, command bar, import and new-event overlays. Print shows only PrintView. */
 export default function App() {
   useShortcuts()
   return (
@@ -19,6 +20,7 @@ export default function App() {
         </div>
         <CommandBar />
         <ImportPanel />
+        <NewEventPanel />
       </div>
       <PrintView />
     </>

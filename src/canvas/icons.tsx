@@ -13,6 +13,7 @@ const PATHS = {
   fit: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
   shuffle: 'M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5',
   close: 'M6 6l12 12M18 6 6 18',
+  image: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm4 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm12 4-5-5L5 21',
 } as const
 
 /** Stroke icon from the set above, sized by font size (1em). */

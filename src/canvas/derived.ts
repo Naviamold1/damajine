@@ -25,10 +25,10 @@ export function severities(violations: Violation[]) {
   return { guests, seatables }
 }
 
-/** The preset the chart came from (by name, then kind), so the command bar can offer its rule templates. */
+/** The demo preset the chart came from (by name), for the header switcher and its rule templates. Undefined for events made with "New event". */
 export function presetOf(chart: Chart) {
   const all = Object.values(presets)
-  return all.find((p) => p.chart.name === chart.name) ?? all.find((p) => p.chart.kind === chart.kind)
+  return all.find((p) => p.chart.name === chart.name)
 }
 
 const NEED_SHORT: Record<Guest['needs'][number], string> = {

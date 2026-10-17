@@ -8,10 +8,12 @@ type UiState = {
   seatableId: string | null
   commandOpen: boolean
   importOpen: boolean
+  newOpen: boolean
   selectGuest: (guestId: string | null, seatableId?: string | null) => void
   selectSeatable: (seatableId: string | null) => void
   setCommandOpen: (open: boolean) => void
   setImportOpen: (open: boolean) => void
+  setNewOpen: (open: boolean) => void
 }
 
 export const useUi = create<UiState>()((set) => ({
@@ -19,10 +21,12 @@ export const useUi = create<UiState>()((set) => ({
   seatableId: null,
   commandOpen: false,
   importOpen: false,
+  newOpen: false,
   selectGuest: (guestId, seatableId = null) => set({ guestId, seatableId }),
   selectSeatable: (seatableId) => set({ seatableId, guestId: null }),
   setCommandOpen: (commandOpen) => set({ commandOpen }),
   setImportOpen: (importOpen) => set({ importOpen, commandOpen: false }),
+  setNewOpen: (newOpen) => set({ newOpen, commandOpen: false }),
 }))
 
 /** Command bar shortcut label for this platform. */

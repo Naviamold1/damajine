@@ -4,7 +4,7 @@ import { presetOf, solveProposal, violationsOf } from './derived'
 import { Icon, Logo } from './icons'
 import { useUi } from './ui'
 
-/** Top bar: wordmark, preset switcher, seated progress, rule counts, reseat, import, print, undo/redo. */
+/** Top bar: wordmark, demo switcher (plus the current own event), new event, seated progress, rule counts, reseat, import, print, undo/redo. */
 export function Header() {
   const chart = useChart((s) => s.chart)
   const canUndo = useChart((s) => s.past.length > 0)
@@ -30,7 +30,8 @@ export function Header() {
         <span className="font-display text-[20px] font-bold tracking-[-0.02em]">damajine</span>
       </div>
 
-      <nav className="flex rounded-xl bg-floor p-1">
+      <nav className="flex items-center rounded-xl bg-floor p-1">
+        <span className="px-2 text-[12px] font-medium text-faint">Demos</span>
         {Object.entries(presets).map(([id, p]) => (
           <button
             key={id}
@@ -43,7 +44,11 @@ export function Header() {
             {p.label}
           </button>
         ))}
+        {!current && <span className="ml-1 max-w-48 truncate rounded-lg bg-white px-3 py-1 font-medium shadow-island">{chart.name}</span>}
       </nav>
+      <button className={btn} onClick={() => useUi.getState().setNewOpen(true)}>
+        <Icon name="plus" /> New event
+      </button>
 
       <span className="flex-1" />
 

@@ -22,7 +22,7 @@ function dropProps(seatableId: string | null) {
 }
 
 /**
- * Left column: guest search, unseated guests, seated guests grouped by table, problems.
+ * Left column: guest search, an import prompt while there are no guests, unseated guests, seated guests grouped by table, problems.
  * Drag a guest onto the canvas to seat, onto a table group to seat there, anywhere else here to unseat.
  */
 export function Sidebar() {
@@ -48,13 +48,22 @@ export function Sidebar() {
         <Icon name="search" />
         <input
           className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-faint"
-          placeholder={`Find one of ${attending.length} guests`}
+          placeholder={attending.length ? `Find one of ${attending.length} guests` : 'Search guests'}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
       </label>
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pt-1 pb-3">
-        {(unseated.length > 0 || !q) && (
+        {attending.length === 0 && (
+          <div className="mx-1 mt-3 rounded-xl bg-wine-soft p-4">
+            <div className="font-display text-[16px] font-semibold">No guests yet</div>
+            <p className="pt-1 pb-3 text-dim">Paste your list in any shape. Plus-ones, families and diets get picked up.</p>
+            <button className="flex items-center gap-1.5 rounded-lg bg-ink px-3 py-1.5 font-medium text-white hover:bg-wine" onClick={() => useUi.getState().setImportOpen(true)}>
+              <Icon name="import" /> Import guests
+            </button>
+          </div>
+        )}
+        {attending.length > 0 && (unseated.length > 0 || !q) && (
           <div className={`mt-2 rounded-xl ${unseated.length ? 'bg-wine-soft' : ''}`}>
             <Section title={unseated.length ? 'Waiting for a seat' : 'Everyone has a seat'} count={unseated.length ? `${seats(unseated)}` : ''}>
               {unseated.map(row)}
