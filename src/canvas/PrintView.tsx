@@ -1,6 +1,7 @@
 import type { Guest } from '@/domain/types'
 import { useChart } from '@/store/chart'
 import { CHIP } from './Canvas'
+import { DecorShape } from './DecorShape'
 import { groupTint, guestTags, initials } from './derived'
 import { chartBounds, layoutSlots, seatOffsets, toCanvas } from './layout'
 import { SeatableShape } from './SeatableShape'
@@ -91,12 +92,7 @@ function PrintMap() {
       {/* CSS filter:none overrides the canvas drop shadow (filter attribute), which prints poorly. */}
       <svg viewBox={viewBox} className="block h-[165mm] w-full portrait:h-[225mm] [&_*]:[filter:none]">
         {chart.decor.map((d) => (
-          <g key={d.id}>
-            <rect x={d.x - d.w / 2} y={d.y - d.h / 2} width={d.w} height={d.h} rx={10} className="fill-[#e2e5ed] stroke-[#cfd3de] [stroke-width:1.5]" />
-            <text x={d.x} y={d.y + 4} textAnchor="middle" className="fill-faint font-display text-[12px] font-bold tracking-[0.12em] uppercase">
-              {d.label}
-            </text>
-          </g>
+          <DecorShape key={d.id} d={d} />
         ))}
         {chart.seatables.map((s) => (
           <SeatableShape key={s.id} s={s} used={used(s.id)} tone={null} />

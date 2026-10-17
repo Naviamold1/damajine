@@ -4,7 +4,7 @@ import { isTyping, useUi } from './ui'
 
 /**
  * Global keys: Ctrl/Cmd+K command bar, Ctrl/Cmd+Z undo, Shift+Ctrl/Cmd+Z (or Ctrl+Y) redo,
- * Enter keeps / Esc reverts a proposal, Delete removes the selected table. Ignored while typing.
+ * Enter keeps / Esc reverts a proposal, Delete removes the selected table or room feature. Ignored while typing.
  */
 export function useShortcuts() {
   useEffect(() => {
@@ -33,6 +33,9 @@ export function useShortcuts() {
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && ui.seatableId && !ui.guestId) {
         chart.removeSeatable(ui.seatableId)
         ui.selectSeatable(null)
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && ui.decorId) {
+        chart.removeDecor(ui.decorId)
+        ui.selectDecor(null)
       } else if (e.key === 'Escape') {
         ui.selectGuest(null)
       }

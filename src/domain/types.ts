@@ -51,6 +51,8 @@ export const Decor = z.object({
   y: z.number(),
   w: z.number().positive(),
   h: z.number().positive(),
+  /** Degrees around the center. Optional so charts saved before rotation existed still load. */
+  rotation: z.number().optional(),
 })
 export type Decor = z.infer<typeof Decor>
 

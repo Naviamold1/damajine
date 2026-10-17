@@ -58,6 +58,14 @@ export function seatableAt(seatables: Seatable[], p: Point, margin = 12): Seatab
   })
 }
 
+/** Axis-aligned size of a w x h box rotated by `deg` degrees. Used for bounds and to place the selection toolbar. */
+export function rotatedSize(w: number, h: number, deg = 0) {
+  const a = (deg * Math.PI) / 180
+  const c = Math.abs(Math.cos(a))
+  const s = Math.abs(Math.sin(a))
+  return { w: w * c + h * s, h: w * s + h * c }
+}
+
 /** Bounding box of everything drawn, for fit-to-content. Null when the chart is empty. */
 export function chartBounds(chart: Pick<Chart, 'seatables' | 'decor'>) {
   const boxes = [
@@ -66,7 +74,7 @@ export function chartBounds(chart: Pick<Chart, 'seatables' | 'decor'>) {
       const r = Math.hypot(w, h) / 2
       return { x: s.x, y: s.y, w: r * 2, h: r * 2 }
     }),
-    ...chart.decor,
+    ...chart.decor.map((d) => ({ x: d.x, y: d.y, ...rotatedSize(d.w, d.h, d.rotation) })),
   ]
   if (boxes.length === 0) return null
   return {

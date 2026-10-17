@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { emptyChart, type Assignment, type Chart, type Guest, type Proposal, type Rule, type Seatable } from '@/domain/types'
+import { emptyChart, type Assignment, type Chart, type Decor, type Guest, type Proposal, type Rule, type Seatable } from '@/domain/types'
 
 /** An event made with "New event": a chart that always has an `id`. */
 export type SavedEvent = Chart & { id: string }
@@ -36,6 +36,11 @@ type ChartState = {
   addSeatable: (seatable: Seatable) => void
   removeSeatable: (seatableId: string) => void
   moveSeatable: (seatableId: string, x: number, y: number) => void
+  /** Change a seatable's seats, rotation, etc. */
+  updateSeatable: (seatableId: string, patch: Partial<Omit<Seatable, 'id'>>) => void
+  /** Move, resize or rotate a room feature. */
+  updateDecor: (decorId: string, patch: Partial<Omit<Decor, 'id'>>) => void
+  removeDecor: (decorId: string) => void
   addRule: (rule: Rule) => void
   removeRule: (ruleId: string) => void
   applyAssignments: (assignments: Assignment[]) => void
@@ -121,6 +126,10 @@ export const useChart = create<ChartState>()(
           })),
         moveSeatable: (seatableId, x, y) =>
           commit((c) => ({ ...c, seatables: c.seatables.map((s) => (s.id === seatableId ? { ...s, x, y } : s)) })),
+        updateSeatable: (seatableId, patch) =>
+          commit((c) => ({ ...c, seatables: c.seatables.map((s) => (s.id === seatableId ? { ...s, ...patch } : s)) })),
+        updateDecor: (decorId, patch) => commit((c) => ({ ...c, decor: c.decor.map((d) => (d.id === decorId ? { ...d, ...patch } : d)) })),
+        removeDecor: (decorId) => commit((c) => ({ ...c, decor: c.decor.filter((d) => d.id !== decorId) })),
         addRule: (rule) => commit((c) => ({ ...c, rules: [...c.rules, rule] })),
         removeRule: (ruleId) => commit((c) => ({ ...c, rules: c.rules.filter((r) => r.id !== ruleId) })),
         applyAssignments: (assignments) => commit((c) => ({ ...c, assignments })),

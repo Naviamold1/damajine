@@ -1,22 +1,32 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent } from 'react'
-import type { Seatable } from '@/domain/types'
+import type { Decor, Seatable } from '@/domain/types'
 import { useChart } from '@/store/chart'
 import { AskPill } from './AskPill'
+import { DecorShape } from './DecorShape'
 import { groupTint, initials, severities, shortName, violationsOf } from './derived'
 import { Icon } from './icons'
 import { chartBounds, guestPoints, layoutSlots, seatableAt, seatOffsets, toCanvas, type Point } from './layout'
 import { Palette } from './Palette'
 import { ProposalBar } from './ProposalBar'
 import { SeatableShape, type Tone } from './SeatableShape'
+import { SelectionBar } from './SelectionBar'
 import { GUEST_DRAG, isTyping, useUi } from './ui'
 import { useViewport, type View } from './useViewport'
 
 /** Seat chip radius in canvas units. Seat spacing in `seatOffsets` leaves room for it. */
 export const CHIP = 10.5
 
+/** Smallest room feature side when resizing, in canvas units. */
+const MIN_DECOR = 30
+
 type Gesture =
-  | { kind: 'pan'; client: Point; view: View; moved: boolean }
-  | { kind: 'move'; id: string; start: Point; orig: Point; moved: boolean }
+  /** `select`: room feature to select if this turns out to be a click (unselected features pan, so they are not dragged by accident). */
+  | { kind: 'pan'; client: Point; view: View; moved: boolean; select?: string }
+  | { kind: 'move'; target: 'seatable' | 'decor'; id: string; start: Point; orig: Point; moved: boolean }
+  | { kind: 'resize'; id: string }
+
+/** Uncommitted geometry while dragging; committed as one undo step on release. */
+type Draft = { kind: 'seatable'; id: string; x: number; y: number } | { kind: 'decor'; decor: Decor }
 
 /** True while the space bar is held (outside inputs), for space-drag panning. */
 function useSpaceHeld() {
@@ -42,17 +52,18 @@ function useSpaceHeld() {
 /**
  * The seating canvas: decor, seatables, seat chips (initials tinted by group), violations and the pending proposal overlay.
  * Drag background (or space-drag) to pan, wheel to zoom, drag a table to move it (one undo step),
- * drop a guest from the sidebar onto a table to seat them.
+ * drop a guest from the sidebar onto a table to seat them. Click a table or room feature to select it
+ * (SelectionBar: seats, rotate, delete); drag a selected room feature to move it, its corner handles to resize.
  */
 export function Canvas() {
   const chart = useChart((s) => s.chart)
   const proposal = useChart((s) => s.proposal)
-  const { moveSeatable, moveGuest } = useChart.getState()
-  const { guestId, seatableId, selectGuest, selectSeatable } = useUi()
+  const { moveSeatable, moveGuest, updateDecor } = useChart.getState()
+  const { guestId, seatableId, decorId, selectGuest, selectSeatable, selectDecor } = useUi()
   const svgRef = useRef<SVGSVGElement>(null)
   const { view, setView, toCanvas: clientToCanvas, zoomBy, fit } = useViewport(svgRef)
   const gesture = useRef<Gesture | null>(null)
-  const [drag, setDrag] = useState<{ id: string } & Point>()
+  const [draft, setDraft] = useState<Draft>()
   const [dropId, setDropId] = useState<string | null>(null)
   const space = useSpaceHeld()
 
@@ -60,7 +71,8 @@ export function Canvas() {
   const fitKey = `${chart.kind}:${chart.name}`
   useEffect(() => fit(chartBounds(useChart.getState().chart)), [fitKey, fit])
 
-  const seatables = drag ? chart.seatables.map((s) => (s.id === drag.id ? { ...s, x: drag.x, y: drag.y } : s)) : chart.seatables
+  const seatables = draft?.kind === 'seatable' ? chart.seatables.map((s) => (s.id === draft.id ? { ...s, x: draft.x, y: draft.y } : s)) : chart.seatables
+  const decor = draft?.kind === 'decor' ? chart.decor.map((d) => (d.id === draft.decor.id ? draft.decor : d)) : chart.decor
   const base = useMemo(() => layoutSlots(chart, chart.assignments), [chart])
   const shown = useMemo(() => (proposal ? layoutSlots(chart, proposal.assignments, base) : base), [chart, proposal, base])
   const violations = proposal ? proposal.violations : violationsOf(chart)
@@ -80,7 +92,24 @@ export function Canvas() {
     if (space || e.button !== 0) return
     e.stopPropagation()
     svgRef.current?.setPointerCapture(e.pointerId)
-    gesture.current = { kind: 'move', id: s.id, start: clientToCanvas(e.clientX, e.clientY), orig: { x: s.x, y: s.y }, moved: false }
+    gesture.current = { kind: 'move', target: 'seatable', id: s.id, start: clientToCanvas(e.clientX, e.clientY), orig: { x: s.x, y: s.y }, moved: false }
+  }
+
+  const onDecorDown = (d: Decor) => (e: PointerEvent) => {
+    if (space || e.button !== 0) return
+    e.stopPropagation()
+    svgRef.current?.setPointerCapture(e.pointerId)
+    gesture.current =
+      d.id === decorId
+        ? { kind: 'move', target: 'decor', id: d.id, start: clientToCanvas(e.clientX, e.clientY), orig: { x: d.x, y: d.y }, moved: false }
+        : { kind: 'pan', client: { x: e.clientX, y: e.clientY }, view, moved: false, select: d.id }
+  }
+
+  const onHandleDown = (d: Decor) => (e: PointerEvent) => {
+    if (e.button !== 0) return
+    e.stopPropagation()
+    svgRef.current?.setPointerCapture(e.pointerId)
+    gesture.current = { kind: 'resize', id: d.id }
   }
 
   const onPointerMove = (e: PointerEvent) => {
@@ -94,8 +123,25 @@ export function Canvas() {
       return
     }
     const p = clientToCanvas(e.clientX, e.clientY)
+    if (g.kind === 'resize') {
+      // Resize symmetrically around the center: the pointer's distance from it, in the feature's own (unrotated) frame.
+      const d = chart.decor.find((x) => x.id === g.id)
+      if (!d) return
+      const a = (-(d.rotation ?? 0) * Math.PI) / 180
+      const dx = p.x - d.x
+      const dy = p.y - d.y
+      const w = Math.max(MIN_DECOR, Math.round(2 * Math.abs(dx * Math.cos(a) - dy * Math.sin(a))))
+      const h = Math.max(MIN_DECOR, Math.round(2 * Math.abs(dx * Math.sin(a) + dy * Math.cos(a))))
+      setDraft({ kind: 'decor', decor: { ...d, w, h } })
+      return
+    }
     g.moved ||= Math.hypot(p.x - g.start.x, p.y - g.start.y) * view.k > 3
-    if (g.moved) setDrag({ id: g.id, x: Math.round(g.orig.x + p.x - g.start.x), y: Math.round(g.orig.y + p.y - g.start.y) })
+    if (!g.moved) return
+    const x = Math.round(g.orig.x + p.x - g.start.x)
+    const y = Math.round(g.orig.y + p.y - g.start.y)
+    if (g.target === 'seatable') return setDraft({ kind: 'seatable', id: g.id, x, y })
+    const d = chart.decor.find((it) => it.id === g.id)
+    if (d) setDraft({ kind: 'decor', decor: { ...d, x, y } })
   }
 
   const onPointerUp = () => {
@@ -103,13 +149,19 @@ export function Canvas() {
     gesture.current = null
     if (!g) return
     if (g.kind === 'pan') {
-      if (!g.moved) selectGuest(null)
-    } else if (g.moved && drag) {
-      moveSeatable(g.id, drag.x, drag.y)
-    } else {
+      if (!g.moved) {
+        if (g.select) selectDecor(g.select)
+        else selectGuest(null)
+      }
+    } else if (draft?.kind === 'seatable') {
+      moveSeatable(draft.id, draft.x, draft.y)
+    } else if (draft?.kind === 'decor') {
+      const { x, y, w, h } = draft.decor
+      updateDecor(draft.decor.id, { x, y, w, h })
+    } else if (g.kind === 'move' && g.target === 'seatable') {
       selectSeatable(g.id)
     }
-    setDrag(undefined)
+    setDraft(undefined)
   }
 
   const dropTarget = (e: DragEvent) => seatableAt(chart.seatables, clientToCanvas(e.clientX, e.clientY))
@@ -157,13 +209,8 @@ export function Canvas() {
         </defs>
         <rect width="100%" height="100%" fill="url(#grid)" />
         <g transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
-          {chart.decor.map((d) => (
-            <g key={d.id} className="pointer-events-none">
-              <rect x={d.x - d.w / 2} y={d.y - d.h / 2} width={d.w} height={d.h} rx={10} className="fill-[#e2e5ed] stroke-[#cfd3de] [stroke-width:1.5]" />
-              <text x={d.x} y={d.y + 4} textAnchor="middle" className="fill-faint font-display text-[12px] font-bold tracking-[0.12em] uppercase">
-                {d.label}
-              </text>
-            </g>
+          {decor.map((d) => (
+            <DecorShape key={d.id} d={d} selected={d.id === decorId} onPointerDown={onDecorDown(d)} />
           ))}
 
           {seatables.map((s) => (
@@ -252,6 +299,31 @@ export function Canvas() {
               </text>
             )
           })}
+
+          {/* Resize handles on the selected room feature's corners, constant size on screen. */}
+          {decor
+            .filter((d) => d.id === decorId)
+            .flatMap((d) =>
+              [-1, 1].flatMap((sx) =>
+                [-1, 1].map((sy) => {
+                  const p = toCanvas({ x: d.x, y: d.y, rotation: d.rotation ?? 0 }, { x: (sx * d.w) / 2, y: (sy * d.h) / 2 })
+                  const r = 5 / view.k
+                  return (
+                    <rect
+                      key={`${sx}${sy}`}
+                      x={p.x - r}
+                      y={p.y - r}
+                      width={r * 2}
+                      height={r * 2}
+                      rx={r / 3}
+                      className={`fill-white stroke-wine ${sx === sy ? 'cursor-nwse-resize' : 'cursor-nesw-resize'}`}
+                      strokeWidth={1.5 / view.k}
+                      onPointerDown={onHandleDown(d)}
+                    />
+                  )
+                }),
+              ),
+            )}
         </g>
       </svg>
 
@@ -264,6 +336,7 @@ export function Canvas() {
         </div>
       )}
       <Legend />
+      <SelectionBar view={view} hidden={draft !== undefined} />
       <Palette center={() => { const r = svgRef.current?.getBoundingClientRect(); return clientToCanvas((r?.left ?? 0) + (r?.width ?? 0) / 2, (r?.top ?? 0) + (r?.height ?? 0) / 2) }} />
       <div className="absolute right-4 bottom-4 flex items-center rounded-xl bg-white p-1 text-dim shadow-island">
         <button className={ZOOM_BTN} title="Zoom out" onClick={() => zoomBy(1 / 1.25)}>

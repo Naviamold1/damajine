@@ -6,11 +6,14 @@ type UiState = {
   guestId: string | null
   /** Seatable highlighted on the canvas (selected directly, or the selected guest's table). */
   seatableId: string | null
+  /** Room feature selected for moving, resizing, rotating. Selecting a guest or seatable clears it. */
+  decorId: string | null
   commandOpen: boolean
   importOpen: boolean
   newOpen: boolean
   selectGuest: (guestId: string | null, seatableId?: string | null) => void
   selectSeatable: (seatableId: string | null) => void
+  selectDecor: (decorId: string | null) => void
   setCommandOpen: (open: boolean) => void
   setImportOpen: (open: boolean) => void
   setNewOpen: (open: boolean) => void
@@ -19,11 +22,13 @@ type UiState = {
 export const useUi = create<UiState>()((set) => ({
   guestId: null,
   seatableId: null,
+  decorId: null,
   commandOpen: false,
   importOpen: false,
   newOpen: false,
-  selectGuest: (guestId, seatableId = null) => set({ guestId, seatableId }),
-  selectSeatable: (seatableId) => set({ seatableId, guestId: null }),
+  selectGuest: (guestId, seatableId = null) => set({ guestId, seatableId, decorId: null }),
+  selectSeatable: (seatableId) => set({ seatableId, guestId: null, decorId: null }),
+  selectDecor: (decorId) => set({ decorId, guestId: null, seatableId: null }),
   setCommandOpen: (commandOpen) => set({ commandOpen }),
   setImportOpen: (importOpen) => set({ importOpen, commandOpen: false }),
   setNewOpen: (newOpen) => set({ newOpen, commandOpen: false }),
