@@ -4,12 +4,13 @@ import { normalize } from './match'
 /** Cache key for a user prompt: task plus the normalized words the user typed. */
 export const demoKey = (task: AiTask, text: string) => `${task}:${normalize(text)}`
 
+/** A cached plan whose actions are all rules (rule actions share the rule fields: type, guestIds, zone, hard). */
 const rules = (text: string, response: { rules: object[]; explanation: string }) =>
-  [demoKey('rules', text), { ambiguous: [], ...response }] as const
+  [demoKey('rules', text), { ambiguous: [], actions: response.rules, explanation: response.explanation }] as const
 
 /**
- * Canned Gemini responses for the presets' ruleTemplates, in the same shape Gemini returns
- * (rules reference preset guest ids). Lets the demo run with no network. Validated by callers like live output.
+ * Canned Gemini plans for the presets' ruleTemplates, in the same shape Gemini returns
+ * (actions reference preset ids). Lets the demo run with no network. Validated by callers like live output.
  */
 export const demoCache = new Map<string, unknown>([
   // Wedding

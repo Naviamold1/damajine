@@ -111,4 +111,5 @@ export const weddingRuleTemplates = [
   'Put Sophie Turner near the dance floor',
   "Put the Kapanadze cousins near the dance floor",
   "Seat the groom's university friends together",
+  'Make sure each table has the same amount of people',
 ]

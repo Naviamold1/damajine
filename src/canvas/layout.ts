@@ -1,4 +1,4 @@
-import { footprint } from '@/domain/geometry'
+import { footprint, rotatedSize } from '@/domain/geometry'
 import type { Assignment, Chart, Guest, Seatable } from '@/domain/types'
 
 export type Point = { x: number; y: number }
@@ -56,14 +56,6 @@ export function seatableAt(seatables: Seatable[], p: Point, margin = 12): Seatab
     const { w, h } = footprint(s)
     return Math.abs(lx) <= w / 2 + margin && Math.abs(ly) <= h / 2 + margin
   })
-}
-
-/** Axis-aligned size of a w x h box rotated by `deg` degrees. Used for bounds and to place the selection toolbar. */
-export function rotatedSize(w: number, h: number, deg = 0) {
-  const a = (deg * Math.PI) / 180
-  const c = Math.abs(Math.cos(a))
-  const s = Math.abs(Math.sin(a))
-  return { w: w * c + h * s, h: w * s + h * c }
 }
 
 /** Bounding box of everything drawn, for fit-to-content. Null when the chart is empty. */

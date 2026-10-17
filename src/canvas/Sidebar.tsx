@@ -35,8 +35,9 @@ export function Sidebar() {
   const attending = chart.guests.filter((g) => g.attending)
   const shown = attending.filter((g) => !q || [g.name, g.group ?? '', ...g.tags].some((t) => t.toLowerCase().includes(q)))
   const seatOf = new Map(chart.assignments.map((a) => [a.guestId, a.seatableId]))
-  const label = (id: string | undefined) => chart.seatables.find((s) => s.id === id)?.label ?? 'none'
-  const movedTo = new Map(proposal?.moved.map((id) => [id, label(proposal.assignments.find((a) => a.guestId === id)?.seatableId)]))
+  // Proposed destinations can be tables the proposal adds, so look labels up in its chart.
+  const label = (id: string | undefined) => (proposal?.chart ?? chart).seatables.find((s) => s.id === id)?.label ?? 'none'
+  const movedTo = new Map(proposal?.moved.map((id) => [id, label(proposal.chart.assignments.find((a) => a.guestId === id)?.seatableId)]))
   const unseated = shown.filter((g) => !chart.seatables.some((s) => s.id === seatOf.get(g.id)))
   const seats = (gs: Guest[]) => gs.reduce((n, g) => n + g.size, 0)
 

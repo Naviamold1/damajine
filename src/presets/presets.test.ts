@@ -4,7 +4,7 @@ import { Chart } from '@/domain/types'
 import { footprint } from '@/domain/geometry'
 import { findViolations } from '@/engine/solver'
 import { demoCache, demoKey } from '@/ai/demoCache'
-import { validateRules } from '@/ai/rules'
+import { ActionDraft, applyActions } from '@/ai/actions'
 import { presets } from '.'
 
 type Box = { id: string; left: number; right: number; top: number; bottom: number }
@@ -18,17 +18,8 @@ const box = (id: string, x: number, y: number, { w, h }: { w: number; h: number 
   bottom: y + h / 2,
 })
 
-/** Shape of a cached rules response, enough to validate it against the chart. */
-const CachedRules = z.object({
-  rules: z.array(
-    z.object({
-      type: z.enum(['apart', 'together', 'zone', 'accessible']),
-      guestIds: z.array(z.string()),
-      zone: z.string().optional(),
-      hard: z.boolean().optional(),
-    }),
-  ),
-})
+/** Shape of a cached plan, enough to apply it to the chart. */
+const CachedPlan = z.object({ actions: z.array(ActionDraft) })
 
 const inCanvas = (b: Box) => b.left >= 0 && b.top >= 0 && b.right <= 1200 && b.bottom <= 800
 const overlaps = (a: Box, b: Box) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
@@ -56,11 +47,11 @@ describe.each(Object.entries(presets))('%s preset', (_, { chart, ruleTemplates }
     }
   })
 
-  it('has cached rule templates that reference real guests and zones', () => {
+  it('has cached rule templates whose actions all apply', () => {
     for (const text of ruleTemplates) {
       const cached = demoCache.get(demoKey('rules', text))
       if (cached === undefined) continue
-      expect(() => validateRules(CachedRules.parse(cached).rules, chart), text).not.toThrow()
+      expect(applyActions(chart, CachedPlan.parse(cached).actions).skipped, text).toEqual([])
     }
   })
 
@@ -75,7 +66,7 @@ describe.each(Object.entries(presets))('%s preset', (_, { chart, ruleTemplates }
     const guests = new Set(chart.guests.map((g) => g.id))
     const seatables = new Set(chart.seatables.map((s) => s.id))
     expect(guests.size).toBe(chart.guests.length)
-    expect(chart.rules.flatMap((r) => r.guestIds).every((id) => guests.has(id))).toBe(true)
+    expect(chart.rules.flatMap((r) => ('guestIds' in r ? r.guestIds : [])).every((id) => guests.has(id))).toBe(true)
     expect(chart.assignments.every((a) => guests.has(a.guestId) && seatables.has(a.seatableId))).toBe(true)
   })
 })

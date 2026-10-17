@@ -1,9 +1,8 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { Guest, type Chart } from '@/domain/types'
 import { wedding } from '@/presets/wedding'
-import { presets } from '@/presets'
 import { matchGuest } from './match'
-import { parseRules, parseRulesOffline, validateRules } from './rules'
+import { parseRulesOffline, validateRules } from './rules'
 
 const guests = ['Nino Beridze', 'Nino Tsiklauri', 'Giorgi Kapanadze', 'Ēteri Beridze', 'Smith'].map((name, i) =>
   Guest.parse({ id: `g${i}`, name }),
@@ -75,6 +74,10 @@ describe('parseRulesOffline', () => {
     if (res.kind === 'ask') expect(res.candidates[0].guests.map((g) => g.id)).toEqual(['nino-beridze', 'nino-tsiklauri'])
   })
 
+  it('balance the tables', () => {
+    expect(only('Make sure each table has the same amount of people')).toEqual([{ id: 'balance', type: 'balance' }])
+  })
+
   it('asks back on an unknown name', () => {
     expect(parseRulesOffline('Keep Zaza and Luka apart', wedding).kind).toBe('ask')
   })
@@ -95,19 +98,5 @@ describe('validateRules', () => {
       guests: [Guest.parse({ id: 'a', name: 'A' }), Guest.parse({ id: 'b', name: 'B' })],
     })
     expect(rule).toEqual({ id: 'together:a,b', type: 'together', guestIds: ['b', 'a'], hard: true })
-  })
-})
-
-describe('parseRules offline demo', () => {
-  afterEach(() => vi.unstubAllEnvs())
-
-  it('resolves every preset rule template from the cache or the offline parser', async () => {
-    vi.stubEnv('VITE_AI_OFFLINE', '1')
-    for (const { chart, ruleTemplates } of Object.values(presets)) {
-      for (const text of ruleTemplates) {
-        const res = await parseRules(text, chart)
-        expect(res.kind, text).toBe(text === 'Seat Nino with Mariam' ? 'ask' : 'rules')
-      }
-    }
   })
 })

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { removeGuests, removeSeatables } from '@/domain/edits'
 import { emptyChart, type Assignment, type Chart, type Decor, type Guest, type Proposal, type Rule, type Seatable } from '@/domain/types'
 
 /** An event made with "New event": a chart that always has an `id`. */
@@ -46,7 +47,7 @@ type ChartState = {
   applyAssignments: (assignments: Assignment[]) => void
 
   propose: (proposal: Proposal) => void
-  /** Commit the proposal's rules and assignments as one undo step. */
+  /** Commit the proposal's chart as one undo step. */
   keepProposal: () => void
   revertProposal: () => void
 }
@@ -96,15 +97,7 @@ export const useChart = create<ChartState>()(
         deleteEvent: (id) => set((s) => ({ events: s.events.filter((e) => e.id !== id) })),
         addGuest: (guest) => commit((c) => ({ ...c, guests: [...c.guests, guest] })),
         addGuests: (guests) => commit((c) => ({ ...c, guests: [...c.guests, ...guests] })),
-        removeGuest: (guestId) =>
-          commit((c) => ({
-            ...c,
-            guests: c.guests.filter((g) => g.id !== guestId),
-            assignments: c.assignments.filter((a) => a.guestId !== guestId),
-            rules: c.rules
-              .map((r) => ({ ...r, guestIds: r.guestIds.filter((id) => id !== guestId) }))
-              .filter((r) => r.guestIds.length >= (r.type === 'apart' || r.type === 'together' ? 2 : 1)),
-          })),
+        removeGuest: (guestId) => commit((c) => removeGuests(c, new Set([guestId]))),
         moveGuest: (guestId, seatableId) =>
           commit((c) => {
             const rest = c.assignments.filter((a) => a.guestId !== guestId)
@@ -118,12 +111,7 @@ export const useChart = create<ChartState>()(
             assignments: c.assignments.map((a) => (a.guestId === guestId ? { ...a, pinned } : a)),
           })),
         addSeatable: (seatable) => commit((c) => ({ ...c, seatables: [...c.seatables, seatable] })),
-        removeSeatable: (seatableId) =>
-          commit((c) => ({
-            ...c,
-            seatables: c.seatables.filter((s) => s.id !== seatableId),
-            assignments: c.assignments.filter((a) => a.seatableId !== seatableId),
-          })),
+        removeSeatable: (seatableId) => commit((c) => removeSeatables(c, new Set([seatableId]))),
         moveSeatable: (seatableId, x, y) =>
           commit((c) => ({ ...c, seatables: c.seatables.map((s) => (s.id === seatableId ? { ...s, x, y } : s)) })),
         updateSeatable: (seatableId, patch) =>
@@ -138,7 +126,7 @@ export const useChart = create<ChartState>()(
         keepProposal: () => {
           const { proposal } = get()
           if (!proposal) return
-          commit((c) => ({ ...c, rules: [...c.rules, ...proposal.rules], assignments: proposal.assignments }))
+          commit(() => proposal.chart)
           set({ proposal: null })
         },
         revertProposal: () => set({ proposal: null }),

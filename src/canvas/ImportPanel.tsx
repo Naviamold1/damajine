@@ -40,12 +40,13 @@ function ImportPanelOpen() {
   const add = (guests: Guest[]) => {
     const store = useChart.getState()
     store.addGuests(guests)
-    const res = repair(useChart.getState().chart)
+    const chart = useChart.getState().chart
+    const res = repair(chart)
     store.propose({
-      assignments: res.assignments,
-      rules: [],
+      chart: { ...chart, assignments: res.assignments },
       moved: res.moved,
       violations: res.violations,
+      changes: [],
       explanation: `Seat ${guests.length} imported ${guests.length === 1 ? 'guest' : 'guests'}`,
     })
     close()

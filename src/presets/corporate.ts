@@ -97,4 +97,5 @@ export const corporateRuleTemplates = [
   'Spread the sales team across tables',
   'Keep Shota and Tom apart',
   'Seat Hannah Reid with Lily Evans',
+  'Balance the tables',
 ]

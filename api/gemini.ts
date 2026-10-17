@@ -13,7 +13,7 @@ const Body = z.object({
 })
 
 const SYSTEM: Record<z.infer<typeof Body>['task'], string> = {
-  rules: 'You turn event seating requests into structured rules. Only reference guest ids you are given.',
+  rules: 'You plan edits to an event seating chart: rules, seating, tables, guests, room features, or answers to questions. Only reference ids you are given.',
   import: 'You extract a clean guest list from messy pasted text.',
   explain: 'You explain seating decisions briefly, using only the facts given.',
 }

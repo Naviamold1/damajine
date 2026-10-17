@@ -1,21 +1,19 @@
 import type { Guest } from '@/domain/types'
 import { useChart } from '@/store/chart'
 import { movesOf } from './derived'
+import { Icon } from './icons'
 import { GuestChip } from './Sidebar'
 import type { RuleFlow } from './useRuleFlow'
 
-const RULE_VERB = { apart: 'Keep apart', together: 'Seat together', zone: 'Put', accessible: 'Step-free seat for' } as const
-
 /**
- * Status of a rule flow: static loading text, ask-back with candidate buttons, or the parsed rules.
- * With `moves`, also lists the moves the proposal would make (command bar).
+ * Status of a request: static loading text, ask-back with candidate buttons, a text answer, or the plan:
+ * answers, changes (rules, tables, guests...), skipped actions, then (with `moves`) the moves it would make.
  */
 export function FlowResult({ flow, onPick, moves = false }: { flow: RuleFlow; onPick: (name: string, guest: Guest) => void; moves?: boolean }) {
   const chart = useChart((s) => s.chart)
-  const guests = chart.guests
 
   if (flow.status === 'idle') return null
-  if (flow.status === 'loading') return <div className="text-dim">Reading your rule</div>
+  if (flow.status === 'loading') return <div className="text-dim">Working on it</div>
   if (flow.status === 'error') return <div className="text-hard">{flow.message}</div>
   if (flow.status === 'ask')
     return (
@@ -35,36 +33,58 @@ export function FlowResult({ flow, onPick, moves = false }: { flow: RuleFlow; on
       </div>
     )
 
-  const name = (id: string) => guests.find((g) => g.id === id)?.name ?? id
-  const hard = flow.proposal.violations.filter((v) => v.hard).length
-  const soft = flow.proposal.violations.length - hard
+  const answers = (
+    <>
+      {flow.answers.map((a) => (
+        <p key={a} className="pb-1.5 whitespace-pre-line text-ink">
+          {a}
+        </p>
+      ))}
+    </>
+  )
+  const skipped = flow.skipped.length > 0 && (
+    <ul className="pt-1 text-[12px] text-faint">
+      {flow.skipped.map((s) => (
+        <li key={s}>Skipped {s}</li>
+      ))}
+    </ul>
+  )
+  if (flow.status === 'answer')
+    return (
+      <div>
+        {answers}
+        {skipped}
+      </div>
+    )
+
+  const { proposal } = flow
+  const hard = proposal.violations.filter((v) => v.hard).length
+  const soft = proposal.violations.length - hard
   return (
     <div>
-      {flow.proposal.rules.length === 0 && <div className="text-dim">You already have this rule</div>}
-      {flow.proposal.rules.map((r) => (
-        <div key={r.id} className="flex items-baseline gap-2 py-0.5">
-          <span className={`rounded-md px-1.5 text-[11px] font-semibold uppercase ${'hard' in r && !r.hard ? 'bg-soft/12 text-soft' : 'bg-wine-soft text-wine'}`}>{'hard' in r && !r.hard ? 'soft' : 'hard'}</span>
-          <span>
-            <span className="text-dim">{RULE_VERB[r.type]}</span> <b className="font-semibold">{r.guestIds.map(name).join(', ')}</b>
-            {r.type === 'zone' && <span className="text-dim"> in {r.zone}</span>}
-          </span>
+      {answers}
+      {proposal.changes.map((c, i) => (
+        <div key={i} className="flex items-baseline gap-2 py-0.5">
+          <Icon name="sparkle" className="flex-none translate-y-0.5 text-[12px] text-wine" />
+          <span>{c}</span>
         </div>
       ))}
-      {moves && flow.proposal.moved.length > 0 && (
-        <ul className="mt-2 space-y-1">
-          {movesOf(chart, flow.proposal).map(({ guest, from, to }) => (
+      {skipped}
+      {moves && proposal.moved.length > 0 && (
+        <ul className="mt-2 max-h-56 space-y-1 overflow-y-auto">
+          {movesOf(chart, proposal).map(({ guest, from, to }) => (
             <li key={guest.id} className="flex items-center gap-2">
               <GuestChip g={guest} size={20} />
               <span className="font-medium">{guest.name}</span>
               <span className="text-dim">{from}</span>
               <span className="text-faint">→</span>
-              <span className="font-semibold text-moved">{to}</span>
+              <span className={`font-semibold ${to === 'removed' ? 'text-hard' : 'text-moved'}`}>{to}</span>
             </li>
           ))}
         </ul>
       )}
       <div className="mt-2 text-[13px] text-dim">
-        {flow.proposal.moved.length === 0 ? 'Nobody needs to move' : `${flow.proposal.moved.length} ${flow.proposal.moved.length === 1 ? 'move' : 'moves'}`}
+        {proposal.moved.length === 0 ? 'Nobody needs to move' : `${proposal.moved.length} ${proposal.moved.length === 1 ? 'move' : 'moves'}`}
         {hard > 0 && <span className="text-hard"> · {hard} hard left</span>}
         {soft > 0 && <span className="text-soft"> · {soft} soft left</span>}
       </div>

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { Chart, Violation } from '@/domain/types'
+import { isGuestRule, type Chart, type Violation } from '@/domain/types'
 import { callGemini } from './client'
 import { describeRule } from './rules'
 
@@ -33,7 +33,7 @@ function seatFacts(guestId: string, chart: Chart, violations: Violation[]): Seat
     tablemates: seatable
       ? chart.assignments.filter((a) => a.seatableId === seatable.id && a.guestId !== guestId).map((a) => name(a.guestId))
       : [],
-    rules: chart.rules.filter((r) => r.guestIds.includes(guestId)).map((r) => describeRule(r, chart.guests)),
+    rules: chart.rules.filter((r) => isGuestRule(r) && r.guestIds.includes(guestId)).map((r) => describeRule(r, chart.guests)),
     violations: violations.filter((v) => v.guestIds.includes(guestId)).map((v) => v.message),
     needs: guest.needs,
   }

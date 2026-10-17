@@ -7,7 +7,8 @@ import { MOD, useUi } from './ui'
 import { resolveName, useRuleFlow } from './useRuleFlow'
 
 /**
- * Ctrl/Cmd+K overlay (also opened by the canvas AskPill): type a rule, Enter previews the parsed rules and moves, Enter again proposes it.
+ * Ctrl/Cmd+K overlay (also opened by the canvas AskPill): ask or tell anything about the seating. Enter shows the plan
+ * (rules, table and guest changes, moves) or a text answer; Enter again proposes the plan on the canvas.
  * Shows "Import guests" and the current preset's rule templates while empty; "/import" opens the import panel too.
  * Esc or a click outside closes it.
  */
@@ -45,7 +46,7 @@ function CommandBarOpen() {
           <input
             autoFocus
             className="min-w-0 flex-1 bg-transparent text-[17px] outline-none placeholder:text-faint"
-            placeholder="Who should sit where?"
+            placeholder="Ask anything, or tell me what to change"
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
@@ -84,7 +85,7 @@ function CommandBarOpen() {
         )}
         <div className="flex items-center gap-4 bg-floor px-4 py-2 text-[12px] text-dim">
           <span>
-            <kbd className="font-semibold text-ink">Enter</kbd> {ready ? 'to preview on the canvas' : 'to read the rule'}
+            <kbd className="font-semibold text-ink">Enter</kbd> {ready ? 'to preview on the canvas' : 'to ask'}
           </span>
           <span>
             <kbd className="font-semibold text-ink">Esc</kbd> to close

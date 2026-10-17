@@ -1,5 +1,6 @@
-import type { Assignment, Chart, Guest, Proposal, Rule, Violation } from '@/domain/types'
-import { findViolations, repair, solve } from '@/engine/solver'
+import { movedBetween } from '@/domain/edits'
+import type { Chart, Guest, Proposal, Violation } from '@/domain/types'
+import { findViolations, solve } from '@/engine/solver'
 import { presets } from '@/presets'
 
 const violationCache = new WeakMap<Chart, Violation[]>()
@@ -80,42 +81,33 @@ export function shortName(name: string) {
   return last ? `${first} ${last[0]}.` : first
 }
 
-/** Guest ids whose seatable differs between two assignment lists (seated, unseated or moved). */
-export function movedBetween(before: Assignment[], after: Assignment[]): string[] {
-  const a = new Map(before.map((x) => [x.guestId, x.seatableId]))
-  const b = new Map(after.map((x) => [x.guestId, x.seatableId]))
-  return [...new Set([...a.keys(), ...b.keys()])].filter((id) => a.get(id) !== b.get(id))
-}
-
-/** Proposal for adding `rules`: minimal-move repair of the chart with those rules applied. Already-present rules are not re-added. */
-export function ruleProposal(chart: Chart, rules: Rule[], explanation: string): Proposal {
-  const known = new Set(chart.rules.map((r) => r.id))
-  const fresh = rules.filter((r) => !known.has(r.id))
-  const res = repair({ ...chart, rules: [...chart.rules, ...fresh] })
-  return { assignments: res.assignments, rules: fresh, moved: res.moved, violations: res.violations, explanation }
-}
-
 /** Proposal that re-seats everyone from scratch (pins kept). */
 export function solveProposal(chart: Chart): Proposal {
   const res = solve(chart)
   const left = res.unseated.length ? `, ${res.unseated.length} unseated` : ''
   return {
-    assignments: res.assignments,
-    rules: [],
+    chart: { ...chart, assignments: res.assignments },
     moved: movedBetween(chart.assignments, res.assignments),
     violations: res.violations,
+    changes: [],
     explanation: `Solved from scratch${left}`,
   }
 }
 
-/** Moved guests of a proposal with their from/to seatable labels, for move lists. */
+/**
+ * Moved guests of a proposal with their from/to seatable labels, for move lists.
+ * Guests the proposal adds come "from unseated"; guests it removes go "to removed".
+ */
 export function movesOf(chart: Chart, proposal: Proposal) {
-  const label = (id: string | undefined) => chart.seatables.find((s) => s.id === id)?.label ?? 'unseated'
+  const next = proposal.chart
+  const label = (c: Chart, guestId: string) => {
+    const sid = c.assignments.find((a) => a.guestId === guestId)?.seatableId
+    return c.seatables.find((s) => s.id === sid)?.label ?? 'unseated'
+  }
   return proposal.moved.flatMap((id) => {
-    const guest = chart.guests.find((g) => g.id === id)
+    const guest = next.guests.find((g) => g.id === id) ?? chart.guests.find((g) => g.id === id)
     if (!guest) return []
-    const from = label(chart.assignments.find((a) => a.guestId === id)?.seatableId)
-    const to = label(proposal.assignments.find((a) => a.guestId === id)?.seatableId)
-    return [{ guest, from, to }]
+    const removed = !next.guests.some((g) => g.id === id)
+    return [{ guest, from: label(chart, id), to: removed ? 'removed' : label(next, id) }]
   })
 }

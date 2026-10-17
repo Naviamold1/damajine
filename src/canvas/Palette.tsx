@@ -1,11 +1,10 @@
 import type { ReactNode } from 'react'
+import { DEFAULT_SEATS, nextLabel } from '@/domain/geometry'
 import { SeatableKind } from '@/domain/types'
 import { useChart } from '@/store/chart'
 import type { Point } from './layout'
 import { useUi } from './ui'
 
-const SEATS: Record<SeatableKind, number> = { round: 8, rect: 8, booth: 4, row: 8, bar: 6, zone: 6 }
-const PREFIX: Record<SeatableKind, string> = { round: 'T', rect: 'T', booth: 'B', row: 'Row ', bar: 'Bar ', zone: 'Zone ' }
 const NAME: Record<SeatableKind, string> = { round: 'Round', rect: 'Long', booth: 'Booth', row: 'Row', bar: 'Bar', zone: 'Zone' }
 
 const seat = (cx: number, cy: number) => <circle cx={cx} cy={cy} r={2.4} className="fill-[#a0d2ff] stroke-ink/40" strokeWidth={0.8} />
@@ -57,10 +56,9 @@ const GLYPH: Record<SeatableKind, ReactNode> = {
 export function Palette({ center }: { center: () => Point }) {
   const add = (kind: SeatableKind) => {
     const { chart, addSeatable } = useChart.getState()
-    const n = chart.seatables.filter((s) => PREFIX[s.kind] === PREFIX[kind]).length + 1
     const c = center()
     const id = `${kind}-${crypto.randomUUID().slice(0, 8)}`
-    addSeatable({ id, kind, label: `${PREFIX[kind]}${n}`, seats: SEATS[kind], x: Math.round(c.x), y: Math.round(c.y), rotation: 0, accessible: false })
+    addSeatable({ id, kind, label: nextLabel(chart.seatables, kind), seats: DEFAULT_SEATS[kind], x: Math.round(c.x), y: Math.round(c.y), rotation: 0, accessible: false })
     useUi.getState().selectSeatable(id)
   }
   return (

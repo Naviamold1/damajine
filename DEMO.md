@@ -7,6 +7,7 @@ Three demos, about 90 seconds each. Live site: https://damajine.vercel.app
 - Open the site in a fresh incognito window. Empty storage means Wedding loads, already seated (60/60).
 - Browser zoom 100% on a laptop screen. On a 1080p projector use 125% (Ctrl +), then click **Fit** (bottom right of the canvas).
 - The proxy allows 120 Gemini calls per 10 minutes per IP, and the whole venue may share one IP. Avoid heavy testing right before you present. If live prompts suddenly answer instantly with "I could not turn that into a rule", you are rate limited: switch to safe prompts or a phone hotspot.
+- The proxy uses `gemini-3.5-flash-lite` unless `GEMINI_MODEL` is set in Vercel. Do not switch to `gemini-3.8-flash` on this key: its quota runs out (HTTP 429).
 - Gemini answers in about 1 to 1.5 s (first call after idle up to 3 s). One warm-up prompt a few minutes before is fine. If it fails, the app falls back to the demo cache, then to the offline parser. If it hangs, the fallback kicks in after 6 s.
 - Local fallback with no network: `VITE_AI_OFFLINE=1 pnpm dev`. Safe prompts and import work the same; wow prompts do not.
 - Reset a preset: click its name in the header (Wedding, Hackathon, Restaurant). Ctrl+Z undoes the reset. Full reset: new incognito window.
@@ -48,6 +49,22 @@ Restaurant
 - `The Gelashvili party is celebrating a birthday, give them a table on the terrace`
 
 Offline these answer "I could not turn that into a rule". Use the safe twin listed in each demo.
+
+## Power prompts (live Gemini only, tested on Wedding)
+
+The bar now takes any request: rules, direct seating, tables, guests, room features, or questions. One Enter shows the plan, a second Enter previews it, Keep commits it as one undo step.
+
+| Prompt | What you see |
+| --- | --- |
+| `who is sitting with Eteri?` | A plain answer, nothing changes |
+| `how many vegetarians are there and where do they sit?` | A plain answer |
+| `make sure each table has the same amount of people` | Balance rule, 6 moves (also works offline) |
+| `the Kvaratskhelia family cancelled` | 3 guests marked not attending, 3 seats freed |
+| `add two 10-seat round tables next to the stage and move the groom's university friends there` | 2 new tables by the stage (canvas zooms out to show them), 6 moves |
+| `make table 6 a 10 seater and rename it Kids table` | Table change, 0 moves |
+| `remove the entrance and make the dance floor bigger` | Room features change |
+| `no more than 8 people per table` | Limit rule, 3 moves |
+| `Put Otar at table 4 and pin him` | Direct move plus pin. Shows 1 hard left (Otar needs a step-free table): direct moves are allowed to override rules |
 
 ## 1. Wedding (core story)
 
@@ -113,7 +130,7 @@ Setup: click **Hackathon**. 54/55 seated, Ana Gelovani is under Unseated. Teams 
    ```
    Kartuli Bytes have five laptops, put them by the power sockets
    ```
-   See: all five T11 → T8 (by the sockets), 5 moves, nothing left over. Enter, Enter.
+   See: all five T11 → T8 (by the sockets), 5 or 6 moves (6 when one guest at T8 moves over to make room), nothing left over. Enter, Enter.
    Say: "It knows the room: stage, quiet corner, wall sockets."
 
 Fallback: import works offline as is. Skip step 3. For step 4 type `Put Anuki, Giorgi, Lizi, Tazo and Omar near power` (same 5 moves).

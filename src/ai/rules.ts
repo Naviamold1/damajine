@@ -1,23 +1,13 @@
-import { z } from 'zod'
-import { Rule, type Chart, type Guest } from '@/domain/types'
-import { callGemini } from './client'
-import { findAmbiguousNames, matchGuest, nameTokens, normalize } from './match'
+import { Rule, minGuests, type Chart, type Guest, type GuestRule } from '@/domain/types'
+import { matchGuest, nameTokens, normalize } from './match'
 
-/** One rule as Gemini returns it: flat (Gemini handles flat objects better than unions), no id. */
-const RuleDraft = z.object({
-  type: z.enum(['apart', 'together', 'zone', 'accessible']),
-  guestIds: z.array(z.string()),
-  zone: z.string().optional(),
-  hard: z.boolean().optional(),
-})
-type RuleDraft = z.infer<typeof RuleDraft>
+/**
+ * Rule helpers and the deterministic offline parser. Gemini requests go through `parseRequest` in actions.ts,
+ * which falls back to `parseRulesOffline` here for simple phrasings.
+ */
 
-const RulesResponse = z.object({
-  rules: z.array(RuleDraft),
-  /** Names Gemini could not pin to one guest; non-empty means ask back. */
-  ambiguous: z.array(z.object({ name: z.string(), guestIds: z.array(z.string()) })),
-  explanation: z.string(),
-})
+/** A guest rule without its id, as the offline parser builds it. */
+type RuleDraft = { type: GuestRule['type']; guestIds: string[]; zone?: string; hard?: boolean }
 
 export type Candidates = { name: string; guests: Guest[] }[]
 
@@ -34,7 +24,7 @@ export const chartZones = (chart: Chart): string[] =>
 
 /**
  * Turn drafts into contract `Rule`s: assign ids, apply schema defaults, and reject any guest id
- * or zone that is not in the chart. Throws with a readable message; parseRules then falls back.
+ * or zone that is not in the chart. Throws with a readable message.
  */
 export function validateRules(drafts: RuleDraft[], chart: Chart): Rule[] {
   const known = new Set(chart.guests.map((g) => g.id))
@@ -51,8 +41,10 @@ export function validateRules(drafts: RuleDraft[], chart: Chart): Rule[] {
   })
 }
 
-/** Human sentence for a rule. Used as the offline explanation and by explainSeat. */
+/** Human sentence for a rule. Used for proposal change lines, the offline explanation, the AI prompt and explainSeat. */
 export function describeRule(rule: Rule, guests: Guest[]): string {
+  if (rule.type === 'balance') return 'Even out how many people sit at each table (preferred).'
+  if (rule.type === 'maxPerTable') return `At most ${rule.max} people at any table.`
   const names = rule.guestIds.map((id) => guests.find((g) => g.id === id)?.name ?? id)
   const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]
   const soft = 'hard' in rule && !rule.hard ? ' (preferred)' : ''
@@ -76,55 +68,7 @@ const askAmbiguous = (candidates: Candidates): ParseRulesResult => ({
   candidates,
 })
 
-const HELP = 'Try "keep A and B apart", "seat A with B", "A needs wheelchair access" or "put A near the stage".'
-
-/**
- * Plain language -> rules for the current chart. Ambiguous first names ask back before any AI call.
- * Gemini (or the demo cache) goes first; if it fails or returns ids not in the chart, the offline parser runs.
- * The result is a proposal: nothing here touches the store.
- */
-export async function parseRules(text: string, chart: Chart): Promise<ParseRulesResult> {
-  const ambiguous = findAmbiguousNames(text, chart.guests)
-  if (ambiguous.length) return askAmbiguous(ambiguous)
-
-  try {
-    const res = await callGemini('rules', rulesPrompt(text, chart), RulesResponse, text)
-    const asks = res.ambiguous
-      .map((a) => ({ name: a.name, guests: chart.guests.filter((g) => a.guestIds.includes(g.id)) }))
-      .filter((a) => a.guests.length > 1)
-    if (asks.length) return askAmbiguous(asks)
-    const rules = validateRules(res.rules, chart)
-    if (rules.length) return { kind: 'rules', rules, explanation: res.explanation }
-  } catch {
-    // Network, schema or validation failure: fall through to the deterministic parser.
-  }
-  return parseRulesOffline(text, chart)
-}
-
-/** Grounded prompt: the full guest list and zones, so Gemini can only reference real ids. */
-function rulesPrompt(text: string, chart: Chart): string {
-  const guests = chart.guests
-    .map((g) => [g.id, g.name, g.group ?? '', g.tags.join(' '), g.needs.join(' '), `size ${g.size}`].join(' | '))
-    .join('\n')
-  const zones = chartZones(chart)
-  return [
-    `Event: ${chart.kind}, "${chart.name}".`,
-    'Guests (id | name | group | tags | needs | size):',
-    guests,
-    `Zones: ${zones.length ? zones.join(', ') : 'none'}.`,
-    `Step-free tables: ${chart.seatables.filter((s) => s.accessible).length}.`,
-    '',
-    'Convert the request below into seating rules.',
-    '- apart: guests must not share a table. together: guests share one table.',
-    '- zone: guests sit at a table in that zone; use only a listed zone. accessible: guests need a step-free table.',
-    '- Use only ids from the list. Groups like "the cousins" or "sales team" expand to every matching guest.',
-    '- hard=true by default, including "with", "should" and "must". hard=false only for explicit preferences: "prefer", "ideally", "if possible", "try to", "spread".',
-    '- If a name fits several guests and context does not decide, return no rules and list it in `ambiguous` with the candidate ids.',
-    '- explanation: one short sentence naming the guests.',
-    '',
-    `Request: ${text}`,
-  ].join('\n')
-}
+const HELP = 'Try "keep A and B apart", "seat A with B", "A needs wheelchair access", "put A near the stage" or "balance the tables".'
 
 /** Split "A, B and C" into names. */
 const splitNames = (list: string): string[] =>
@@ -141,11 +85,18 @@ function matchZone(phrase: string, zones: string[]): string | undefined {
   return hits.length === 1 ? hits[0] : undefined
 }
 
-type Clause = { type: 'apart' | 'together' | 'accessible'; names: string[] } | { type: 'zone'; names: string[]; place: string }
+type Clause =
+  | { type: 'apart' | 'together' | 'accessible'; names: string[] }
+  | { type: 'zone'; names: string[]; place: string }
+  | { type: 'balance' }
+
+/** "balance the tables", "same number of people at each table", "even out the tables". */
+const BALANCE = /\b(?:balance|even(?:ly| out)?|equal(?:ly)?|same (?:amount|number))\b/i
 
 /** Recognize one simple English clause. Order matters: "seat A with B" is together, "seat A near X" is zone. */
 function readClause(clause: string): Clause | null {
   let m: RegExpMatchArray | null
+  if (BALANCE.test(clause) && /\btables?\b/i.test(clause)) return { type: 'balance' }
   if ((m = clause.match(/^(.+?)\s+(?:needs?|requires?|uses?|is in)\s+(?:an?\s+)?(?:wheelchair|accessible|step-free)/i)))
     return { type: 'accessible', names: splitNames(m[1]) }
   if ((m = clause.match(/^(?:keep|seat|put|sit)?\s*(.+?)\s+apart$/i)) || (m = clause.match(/^separate\s+(.+)$/i)))
@@ -161,18 +112,24 @@ function readClause(clause: string): Clause | null {
 }
 
 /**
- * Deterministic parser for simple phrasings, one rule per sentence. Used when Gemini is unavailable.
+ * Deterministic parser for simple phrasings, one rule per sentence ("balance the tables" included). Used when Gemini
+ * is unavailable or its plan does nothing.
  * Unknown or ambiguous names ask back instead of guessing.
  */
 export function parseRulesOffline(text: string, chart: Chart): ParseRulesResult {
   const zones = chartZones(chart)
   const drafts: RuleDraft[] = []
+  let balance = false
   const ambiguous: Candidates = []
   const missing: string[] = []
 
   for (const sentence of text.split(/[.;!\n]+/).map((s) => s.trim()).filter(Boolean)) {
     const clause = readClause(sentence)
     if (!clause) continue
+    if (clause.type === 'balance') {
+      balance = true
+      continue
+    }
     const ids: string[] = []
     for (const name of clause.names) {
       const hit = matchGuest(name, chart.guests)
@@ -191,8 +148,8 @@ export function parseRulesOffline(text: string, chart: Chart): ParseRulesResult 
 
   if (ambiguous.length) return askAmbiguous(ambiguous)
   if (missing.length) return { kind: 'ask', question: `I could not find ${missing.map((m) => `"${m}"`).join(', ')}. ${HELP}`, candidates: [] }
-  const valid = drafts.filter((d) => d.guestIds.length >= (d.type === 'apart' || d.type === 'together' ? 2 : 1))
-  if (!valid.length) return { kind: 'ask', question: `I could not turn that into a rule. ${HELP}`, candidates: [] }
-  const rules = validateRules(valid, chart)
+  const valid = drafts.filter((d) => d.guestIds.length >= minGuests(d.type))
+  if (!valid.length && !balance) return { kind: 'ask', question: `I could not turn that into a rule. ${HELP}`, candidates: [] }
+  const rules: Rule[] = [...validateRules(valid, chart), ...(balance ? [{ id: 'balance', type: 'balance' as const }] : [])]
   return { kind: 'rules', rules, explanation: rules.map((r) => describeRule(r, chart.guests)).join(' ') }
 }

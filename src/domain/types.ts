@@ -56,14 +56,29 @@ export const Decor = z.object({
 })
 export type Decor = z.infer<typeof Decor>
 
+/**
+ * Guest rules name the guests they bind (`guestIds`). Room rules (`balance`, `maxPerTable`) apply to every table
+ * and have no guests; narrow with `isGuestRule` before reading `guestIds`.
+ */
 export const Rule = z.discriminatedUnion('type', [
   z.object({ id: z.string(), type: z.literal('apart'), guestIds: z.array(z.string()).min(2), hard: z.boolean().default(true) }),
   z.object({ id: z.string(), type: z.literal('together'), guestIds: z.array(z.string()).min(2), hard: z.boolean().default(true) }),
   z.object({ id: z.string(), type: z.literal('zone'), guestIds: z.array(z.string()).min(1), zone: z.string(), hard: z.boolean().default(false) }),
   z.object({ id: z.string(), type: z.literal('accessible'), guestIds: z.array(z.string()).min(1) }),
+  /** Even out how full the tables are, relative to their size. Always a preference. */
+  z.object({ id: z.string(), type: z.literal('balance') }),
+  /** No table holds more than `max` people. Hard: the solver leaves guests unseated rather than break it. */
+  z.object({ id: z.string(), type: z.literal('maxPerTable'), max: z.number().int().min(1) }),
 ])
 export type Rule = z.infer<typeof Rule>
 export type RuleType = Rule['type']
+export type GuestRule = Extract<Rule, { guestIds: string[] }>
+export type RoomRule = Exclude<Rule, GuestRule>
+
+export const isGuestRule = (rule: Rule): rule is GuestRule => 'guestIds' in rule
+
+/** Fewest guests a guest rule needs to mean anything (apart/together need a pair). */
+export const minGuests = (type: GuestRule['type']) => (type === 'apart' || type === 'together' ? 2 : 1)
 
 /** guestId -> seatableId. Pinned guests are never moved by the solver. */
 export const Assignment = z.object({
@@ -100,18 +115,18 @@ export type Violation = {
 }
 
 /**
- * A pending change from the solver or AI. The UI overlays it on the chart;
- * Keep commits `rules` + `assignments` as one undo step, Revert drops it.
+ * A pending change from the solver or AI. The UI overlays `chart` on the current one;
+ * Keep commits it as one undo step, Revert drops it.
  */
 export type Proposal = {
-  /** Full replacement assignment list. */
-  assignments: Assignment[]
-  /** Rules to add on Keep (e.g. parsed from plain language). */
-  rules: Rule[]
-  /** Guest ids whose seatable changed vs the current chart. */
+  /** The whole chart as it would be after Keep: guests, tables, room features, rules and seating. */
+  chart: Chart
+  /** Guest ids whose seatable changed vs the current chart (newly seated, unseated and removed included). */
   moved: string[]
   /** Violations that remain if the proposal is kept. */
   violations: Violation[]
+  /** Non-seating changes in plain words ("Add Table 9 near the stage"), in the order they apply. */
+  changes: string[]
   explanation: string
 }
 

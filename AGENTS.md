@@ -1,6 +1,6 @@
 # Damajine
 
-Seating canvas for any gathering: weddings, corporate events, restaurants, hackathons, auditoriums, trains. One engine, six demo presets, plus "New event" to start from a blank room or a preset's room (saved under "Yours" in the header). Gemini turns plain language into rules; a deterministic solver does the seating. Built for HACKTOBERFEST Georgia 2026 (17-18 Oct), so speed and a working demo beat polish. See `PLAN.md` for phases and the demo.
+Seating canvas for any gathering: weddings, corporate events, restaurants, hackathons, auditoriums, trains. One engine, six demo presets, plus "New event" to start from a blank room or a preset's room (saved under "Yours" in the header). Gemini turns plain language into a plan of typed actions (rules, seating, tables, guests, room features, answers); a deterministic solver does the seating. Built for HACKTOBERFEST Georgia 2026 (17-18 Oct), so speed and a working demo beat polish. See `PLAN.md` for phases and the demo.
 
 ## Commands
 
@@ -20,7 +20,8 @@ Vite, React 19, TypeScript, Tailwind 4, Zustand, Zod, Vitest. shadcn is not init
 - `src/domain/types.ts`: Zod schemas and inferred types (`Guest`, `Seatable`, `Rule`, `Assignment`, `Chart`). This is the contract. Infer types from the schemas, never hand-write parallel types. Changing it affects everyone, so flag it.
 - `src/engine/`: pure, deterministic solver (`findViolations`, `solve`, `repair`). No React, no I/O, no randomness without a seed. Must respect pinned assignments, hard rules, and party size vs seats.
 - `src/store/chart.ts`: Zustand store with undo/redo and local persistence. Every edit, human or AI, goes through `commit` so undo covers it.
-- `src/ai/`: Gemini calls. The model returns structured output validated by the Zod schemas. It never mutates the chart directly; its result becomes a proposal the user keeps or reverts.
+- `src/ai/`: Gemini calls. `actions.ts` is the core: Gemini answers with a list of `Action`s (a Zod union, one small schema per type), `applyActions` validates each against the chart and applies it to a copy (bad ones are skipped with a reason), and `planProposal` lets the solver reseat around the result. It never mutates the chart directly; the result becomes a proposal (the whole next chart) the user keeps or reverts. `rules.ts` holds the offline parser used when Gemini is unavailable. To give the AI a new ability, add an `Action` variant, handle it in `applyActions`, and mention it in the prompt.
+- `src/domain/edits.ts`: pure chart edits (remove guests or tables with cleanup) shared by the store and AI actions.
 - `src/presets/`: restaurant, wedding, corporate, hackathon, auditorium, train (layout + decor + rule templates + demo guests).
 - `api/`: one serverless function that holds the Gemini key. The key never ships to the client.
 

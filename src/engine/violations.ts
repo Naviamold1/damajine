@@ -19,8 +19,30 @@ export function findViolations(chart: Chart): Violation[] {
   /** Attending, seated members of a rule, deduped, in rule order. */
   const seated = (ids: string[]) => [...new Set(ids)].filter((id) => seatOf.has(id))
 
+  const load = new Map<string, Guest[]>()
+  for (const [gid, seat] of seatOf) {
+    const g = guests.get(gid)
+    if (g) load.set(seat.id, [...(load.get(seat.id) ?? []), g])
+  }
+  const people = (sid: string) => (load.get(sid) ?? []).reduce((n, g) => n + g.size, 0)
+
   const out: Violation[] = []
   for (const rule of chart.rules) {
+    if (rule.type === 'balance') {
+      const targets = balanceTargets(chart.seatables, [...guests.values()])
+      // A whole person or more off the fair share; fractional shares (7.5) allow either neighbour (7 or 8).
+      const off = chart.seatables.filter((s) => Math.abs(people(s.id) - (targets.get(s.id) ?? 0)) >= 1)
+      if (off.length === 0) continue
+      const counts = chart.seatables.map((s) => people(s.id))
+      out.push({ ruleId: rule.id, kind: 'balance', hard: false, guestIds: [], seatableIds: off.map((s) => s.id), message: `Tables are uneven (${Math.min(...counts)} to ${Math.max(...counts)} people)` })
+      continue
+    }
+    if (rule.type === 'maxPerTable') {
+      const over = chart.seatables.filter((s) => people(s.id) > rule.max)
+      if (over.length === 0) continue
+      out.push({ ruleId: rule.id, kind: 'maxPerTable', hard: true, guestIds: over.flatMap((s) => (load.get(s.id) ?? []).map((g) => g.id)), seatableIds: over.map((s) => s.id), message: `${over.map((s) => s.label).join(', ')} ${over.length === 1 ? 'has' : 'have'} more than ${rule.max} people` })
+      continue
+    }
     const members = seated(rule.guestIds)
     switch (rule.type) {
       case 'apart': {
@@ -62,18 +84,23 @@ export function findViolations(chart: Chart): Violation[] {
     out.push({ ruleId: null, kind: 'accessible', hard: true, guestIds: [gid], seatableIds: [seat.id], message: `${g.name} needs an accessible seat` })
   }
 
-  const load = new Map<string, Guest[]>()
-  for (const [gid, seat] of seatOf) {
-    const g = guests.get(gid)
-    if (g) load.set(seat.id, [...(load.get(seat.id) ?? []), g])
-  }
   for (const seat of chart.seatables) {
-    const here = load.get(seat.id) ?? []
-    const used = here.reduce((n, g) => n + g.size, 0)
+    const used = people(seat.id)
     if (used <= seat.seats) continue
-    out.push({ ruleId: null, kind: 'capacity', hard: true, guestIds: here.map((g) => g.id), seatableIds: [seat.id], message: `${seat.label} is over capacity (${used}/${seat.seats})` })
+    out.push({ ruleId: null, kind: 'capacity', hard: true, guestIds: (load.get(seat.id) ?? []).map((g) => g.id), seatableIds: [seat.id], message: `${seat.label} is over capacity (${used}/${seat.seats})` })
   }
   return out
+}
+
+/**
+ * People each seatable should hold for a `balance` rule: everyone attending, spread in proportion to seats
+ * (so a 10-seat table takes more than a 6-seat one). Shared by findViolations and the solver's cost.
+ */
+export function balanceTargets(seatables: Seatable[], attending: Guest[]): Map<string, number> {
+  const seats = seatables.reduce((n, s) => n + s.seats, 0)
+  const people = attending.reduce((n, g) => n + g.size, 0)
+  const fill = seats ? Math.min(1, people / seats) : 0
+  return new Map(seatables.map((s) => [s.id, s.seats * fill]))
 }
 
 /** seatableId -> member ids seated there, in first-seen order. */

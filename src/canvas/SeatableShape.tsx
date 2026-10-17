@@ -3,9 +3,10 @@ import { footprint } from '@/domain/geometry'
 import type { Seatable } from '@/domain/types'
 import { toCanvas } from './layout'
 
-export type Tone = 'hard' | 'soft' | 'select' | 'drop' | null
+/** `added`: a table the pending proposal adds. */
+export type Tone = 'hard' | 'soft' | 'select' | 'drop' | 'added' | null
 
-const STROKE: Record<NonNullable<Tone>, string> = { hard: 'stroke-hard', soft: 'stroke-soft', select: 'stroke-wine', drop: 'stroke-wine' }
+const STROKE: Record<NonNullable<Tone>, string> = { hard: 'stroke-hard', soft: 'stroke-soft', select: 'stroke-wine', drop: 'stroke-wine', added: 'stroke-moved' }
 
 /**
  * Table body for one seatable, drawn by kind with `footprint()` sizes and rotation.

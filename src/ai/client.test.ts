@@ -10,3 +10,13 @@ it('toGeminiSchema keeps only keys Gemini responseSchema accepts', () => {
     required: ['kind', 'size'],
   })
 })
+
+it('toGeminiSchema turns a discriminated union into anyOf instead of dropping it', () => {
+  const schema = z.discriminatedUnion('type', [z.object({ type: z.literal('a') }), z.object({ type: z.literal('b'), n: z.number() })])
+  expect(toGeminiSchema(schema)).toEqual({
+    anyOf: [
+      { type: 'object', properties: { type: { type: 'string', enum: ['a'] } }, required: ['type'] },
+      { type: 'object', properties: { type: { type: 'string', enum: ['b'] }, n: { type: 'number' } }, required: ['type', 'n'] },
+    ],
+  })
+})

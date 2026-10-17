@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Chart } from '@/domain/types'
-import { repair, solve } from './solver'
+import { findViolations, repair, solve } from './solver'
 import { makeChart, seats } from './testChart'
 
 describe('solve', () => {
@@ -131,6 +131,47 @@ describe('repair', () => {
     const res = repair(chart)
     expect(res.moved).toEqual([])
     expect(res.violations).toHaveLength(1)
+  })
+})
+
+describe('room rules', () => {
+  /** 12 guests packed 8 / 4 / 0 at three 8-seat tables. */
+  const lopsided = (rules: Chart['rules']) =>
+    makeChart({
+      guests: Array.from({ length: 12 }, (_, i) => `g${String(i).padStart(2, '0')}`),
+      tables: [{ id: 't1', seats: 8 }, { id: 't2', seats: 8 }, { id: 't3', seats: 8 }],
+      rules,
+      assignments: Array.from({ length: 12 }, (_, i) => ({ guestId: `g${String(i).padStart(2, '0')}`, seatableId: i < 8 ? 't1' : 't2' })),
+    })
+  const counts = (assignments: Chart['assignments']) => ['t1', 't2', 't3'].map((t) => assignments.filter((a) => a.seatableId === t).length)
+
+  it('balance: repair evens out the tables', () => {
+    const res = repair(lopsided([{ id: 'b', type: 'balance' }]))
+    expect(counts(res.assignments)).toEqual([4, 4, 4])
+    expect(res.violations).toEqual([])
+  })
+
+  it('balance: solve spreads guests instead of packing', () => {
+    const chart = { ...lopsided([{ id: 'b', type: 'balance' }]), assignments: [] }
+    expect(counts(solve(chart).assignments)).toEqual([4, 4, 4])
+  })
+
+  it('balance: pinned guests stay put', () => {
+    const chart = lopsided([{ id: 'b', type: 'balance' }])
+    chart.assignments = chart.assignments.map((a) => ({ ...a, pinned: a.seatableId === 't1' }))
+    const res = repair(chart)
+    expect(counts(res.assignments)[0]).toBe(8)
+    expect(res.violations.map((v) => v.kind)).toEqual(['balance'])
+  })
+
+  it('maxPerTable: moves people off tables over the limit, and is reported when broken', () => {
+    const res = repair(lopsided([{ id: 'm', type: 'maxPerTable', max: 5 }]))
+    expect(Math.max(...counts(res.assignments))).toBeLessThanOrEqual(5)
+    expect(res.unseated).toEqual([])
+    expect(res.violations).toEqual([])
+
+    const broken = findViolations(lopsided([{ id: 'm', type: 'maxPerTable', max: 5 }]))
+    expect(broken).toEqual([expect.objectContaining({ kind: 'maxPerTable', hard: true, seatableIds: ['t1'] })])
   })
 })
 

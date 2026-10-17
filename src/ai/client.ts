@@ -10,13 +10,17 @@ const GEMINI_KEYS = new Set([
 
 type JsonSchema = { [key: string]: unknown }
 
-/** Strip a JSON Schema down to what Gemini accepts. `const` becomes a one-value `enum`. */
+/**
+ * Strip a JSON Schema down to what Gemini accepts. `const` becomes a one-value `enum`; `oneOf` (how Zod writes a
+ * discriminated union) becomes `anyOf`, the only union Gemini takes.
+ */
 function geminiSchema(node: unknown): unknown {
   if (Array.isArray(node)) return node.map(geminiSchema)
   if (!node || typeof node !== 'object') return node
   const out: JsonSchema = {}
   for (const [key, value] of Object.entries(node)) {
     if (key === 'const') out.enum = [value]
+    else if (key === 'oneOf') out.anyOf = geminiSchema(value)
     else if (key === 'properties' && value && typeof value === 'object')
       out.properties = Object.fromEntries(Object.entries(value).map(([name, s]) => [name, geminiSchema(s)]))
     else if (GEMINI_KEYS.has(key)) out[key] = geminiSchema(value)

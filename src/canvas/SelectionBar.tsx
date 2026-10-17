@@ -1,7 +1,6 @@
-import { footprint } from '@/domain/geometry'
+import { footprint, rotatedSize } from '@/domain/geometry'
 import { useChart } from '@/store/chart'
 import { Icon } from './icons'
-import { rotatedSize } from './layout'
 import { useUi } from './ui'
 import type { View } from './useViewport'
 

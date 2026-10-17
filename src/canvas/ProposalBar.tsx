@@ -2,7 +2,10 @@ import { useChart } from '@/store/chart'
 import { movesOf } from './derived'
 import { GuestChip } from './Sidebar'
 
-/** Keep / Revert card at the bottom of the canvas while a proposal is pending. Enter / Esc work too (see useShortcuts). */
+/**
+ * Keep / Revert card at the bottom of the canvas while a proposal is pending: moves (or change count), explanation,
+ * the first changes and moves. Enter / Esc work too (see useShortcuts).
+ */
 export function ProposalBar() {
   const chart = useChart((s) => s.chart)
   const proposal = useChart((s) => s.proposal)
@@ -16,7 +19,9 @@ export function ProposalBar() {
     <div className="absolute bottom-4 left-1/2 w-[min(600px,calc(100%-260px))] -translate-x-1/2 animate-pop overflow-hidden rounded-2xl bg-white shadow-island ring-2 ring-moved">
       <div className="flex items-center gap-3 px-4 pt-3">
         <span className="font-display text-[18px] font-bold text-moved">
-          {proposal.moved.length} {proposal.moved.length === 1 ? 'move' : 'moves'}
+          {proposal.moved.length > 0 || proposal.changes.length === 0
+            ? `${proposal.moved.length} ${proposal.moved.length === 1 ? 'move' : 'moves'}`
+            : `${proposal.changes.length} ${proposal.changes.length === 1 ? 'change' : 'changes'}`}
         </span>
         <span className="min-w-0 flex-1 truncate text-dim" title={proposal.explanation}>
           {proposal.explanation}
@@ -24,6 +29,16 @@ export function ProposalBar() {
         {hard > 0 && <span className="font-medium text-hard">{hard} hard left</span>}
         {soft > 0 && <span className="font-medium text-soft">{soft} soft left</span>}
       </div>
+      {proposal.changes.length > 0 && (
+        <ul className="px-4 pt-1.5">
+          {proposal.changes.slice(0, 3).map((c, i) => (
+            <li key={i} className="truncate" title={c}>
+              {c}
+            </li>
+          ))}
+          {proposal.changes.length > 3 && <li className="text-dim">+{proposal.changes.length - 3} more changes</li>}
+        </ul>
+      )}
       {moves.length > 0 && (
         <div className="flex flex-wrap gap-x-4 gap-y-1 px-4 pt-2">
           {moves.slice(0, 4).map(({ guest, from, to }) => (

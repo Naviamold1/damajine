@@ -71,16 +71,26 @@ export function Canvas() {
   const fitKey = `${chart.kind}:${chart.name}`
   useEffect(() => fit(chartBounds(useChart.getState().chart)), [fitKey, fit])
 
-  const seatables = draft?.kind === 'seatable' ? chart.seatables.map((s) => (s.id === draft.id ? { ...s, x: draft.x, y: draft.y } : s)) : chart.seatables
-  const decor = draft?.kind === 'decor' ? chart.decor.map((d) => (d.id === draft.decor.id ? draft.decor : d)) : chart.decor
+  // Fit to the proposal when it adds tables or room features, so nothing it adds lands off screen.
+  useEffect(() => {
+    const current = useChart.getState().chart
+    const adds = (ids: string[], have: { id: string }[]) => ids.some((id) => !have.some((x) => x.id === id))
+    if (proposal && (adds(proposal.chart.seatables.map((s) => s.id), current.seatables) || adds(proposal.chart.decor.map((d) => d.id), current.decor)))
+      fit(chartBounds(proposal.chart))
+  }, [proposal, fit])
+
+  // While a proposal is pending, draw the chart it would produce (new tables, guests, room features included).
+  const next = proposal?.chart ?? chart
+  const seatables = draft?.kind === 'seatable' ? next.seatables.map((s) => (s.id === draft.id ? { ...s, x: draft.x, y: draft.y } : s)) : next.seatables
+  const decor = draft?.kind === 'decor' ? next.decor.map((d) => (d.id === draft.decor.id ? draft.decor : d)) : next.decor
   const base = useMemo(() => layoutSlots(chart, chart.assignments), [chart])
-  const shown = useMemo(() => (proposal ? layoutSlots(chart, proposal.assignments, base) : base), [chart, proposal, base])
+  const shown = useMemo(() => (proposal ? layoutSlots(proposal.chart, proposal.chart.assignments, base) : base), [proposal, base])
   const violations = proposal ? proposal.violations : violationsOf(chart)
   const sev = useMemo(() => severities(violations), [violations])
   const moved = new Set(proposal?.moved)
-  const pinned = new Set((proposal?.assignments ?? chart.assignments).filter((a) => a.pinned).map((a) => a.guestId))
+  const pinned = new Set(next.assignments.filter((a) => a.pinned).map((a) => a.guestId))
   const points = guestPoints(seatables, shown)
-  const oldPoints = proposal ? guestPoints(seatables, base) : points
+  const oldPoints = proposal ? guestPoints(chart.seatables, base) : points
 
   const onBackgroundDown = (e: PointerEvent) => {
     if (e.button !== 0 && e.button !== 1) return
@@ -180,7 +190,8 @@ export function Canvas() {
     selectGuest(id, target.id)
   }
 
-  const tone = (s: Seatable): Tone => (s.id === dropId ? 'drop' : s.id === seatableId ? 'select' : (sev.seatables.get(s.id) ?? null))
+  const isNew = (s: Seatable) => proposal !== null && !chart.seatables.some((x) => x.id === s.id)
+  const tone = (s: Seatable): Tone => (s.id === dropId ? 'drop' : s.id === seatableId ? 'select' : isNew(s) ? 'added' : (sev.seatables.get(s.id) ?? null))
   const used = (id: string) => (shown.get(id) ?? []).filter(Boolean).length
 
   return (
@@ -282,7 +293,7 @@ export function Canvas() {
             const s = sev.guests.get(id)
             const isMoved = proposal && moved.has(id)
             if (!s && !isMoved && id !== guestId) return null
-            const g = chart.guests.find((x) => x.id === id)
+            const g = next.guests.find((x) => x.id === id)
             if (!g) return null
             const anchor = p.dir.x > 0.3 ? 'start' : p.dir.x < -0.3 ? 'end' : 'middle'
             const dy = anchor === 'middle' ? (p.dir.y < 0 ? -2 : 9) : 3
