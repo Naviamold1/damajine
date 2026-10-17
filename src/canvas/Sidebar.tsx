@@ -2,10 +2,9 @@ import { useEffect, useState, type DragEvent, type ReactNode } from 'react'
 import { explainSeat } from '@/ai/explain'
 import type { Guest } from '@/domain/types'
 import { useChart } from '@/store/chart'
-import { guestTags, severities, violationsOf } from './derived'
-import { FlowResult } from './FlowResult'
+import { groupTint, guestBadges, initials, severities, violationsOf } from './derived'
+import { Icon } from './icons'
 import { GUEST_DRAG, useUi } from './ui'
-import { resolveName, useRuleFlow } from './useRuleFlow'
 
 /** Accept guest drops; `seatableId` null unseats. */
 function dropProps(seatableId: string | null) {
@@ -23,7 +22,7 @@ function dropProps(seatableId: string | null) {
 }
 
 /**
- * Left column: guest search, unseated guests, seated guests grouped by table, problems, rule box.
+ * Left column: guest search, unseated guests, seated guests grouped by table, problems.
  * Drag a guest onto the canvas to seat, onto a table group to seat there, anywhere else here to unseat.
  */
 export function Sidebar() {
@@ -44,23 +43,30 @@ export function Sidebar() {
   const row = (g: Guest) => <GuestRow key={g.id} g={g} sev={sev.get(g.id)} movedTo={movedTo.get(g.id)} seated={seatOf.has(g.id)} pinned={chart.assignments.some((a) => a.guestId === g.id && a.pinned)} />
 
   return (
-    <aside className="flex w-[270px] flex-none flex-col overflow-hidden border-r border-line" {...dropProps(null)}>
-      <input
-        className="mx-2.5 mt-2 border border-line bg-black px-2 py-1 outline-none placeholder:text-dim focus:border-[#555]"
-        placeholder={`Search ${attending.length} guests`}
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
-      <div className="min-h-0 flex-1 overflow-y-auto pb-2">
-        <Section title="Unseated" count={`${unseated.length} · ${seats(unseated)} seats`}>
-          {unseated.map(row)}
-        </Section>
+    <aside className="flex w-[300px] flex-none flex-col overflow-hidden border-r border-line bg-white" {...dropProps(null)}>
+      <label className="mx-3 mt-3 flex items-center gap-2 rounded-xl bg-floor px-3 py-2 text-dim focus-within:ring-2 focus-within:ring-wine/30">
+        <Icon name="search" />
+        <input
+          className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-faint"
+          placeholder={`Find one of ${attending.length} guests`}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </label>
+      <div className="min-h-0 flex-1 overflow-y-auto px-2 pt-1 pb-3">
+        {(unseated.length > 0 || !q) && (
+          <div className={`mt-2 rounded-xl ${unseated.length ? 'bg-wine-soft' : ''}`}>
+            <Section title={unseated.length ? 'Waiting for a seat' : 'Everyone has a seat'} count={unseated.length ? `${seats(unseated)}` : ''}>
+              {unseated.map(row)}
+            </Section>
+          </div>
+        )}
         {chart.seatables.map((s) => {
           const here = shown.filter((g) => seatOf.get(g.id) === s.id)
           if (q && here.length === 0) return null
           return (
             <div key={s.id} {...dropProps(s.id)}>
-              <Section title={s.label} count={`${seats(here)}/${s.seats}`} onTitle={() => useUi.getState().selectSeatable(s.id)}>
+              <Section title={s.label} used={seats(here)} capacity={s.seats} onTitle={() => useUi.getState().selectSeatable(s.id)}>
                 {here.map(row)}
               </Section>
             </div>
@@ -68,26 +74,45 @@ export function Sidebar() {
         })}
       </div>
       <Problems />
-      <RuleBox key={chart.name} />
     </aside>
   )
 }
 
-function Section({ title, count, onTitle, children }: { title: string; count: string; onTitle?: () => void; children: ReactNode }) {
+/** Group heading with an optional capacity meter, then its guest rows. */
+function Section({ title, count, used, capacity, onTitle, children }: { title: string; count?: string; used?: number; capacity?: number; onTitle?: () => void; children: ReactNode }) {
+  const over = used !== undefined && capacity !== undefined && used > capacity
   return (
-    <>
-      <div className="flex justify-between px-2.5 pt-2.5 pb-1 font-semibold">
-        <button className="text-left" onClick={onTitle}>
+    <div className="pt-2">
+      <div className="flex items-center gap-2 px-2 pb-1">
+        <button className="font-display text-[15px] font-semibold hover:text-wine" onClick={onTitle} disabled={!onTitle}>
           {title}
         </button>
-        <span className="font-normal text-dim tabular-nums">{count}</span>
+        <span className="flex-1" />
+        {capacity !== undefined && used !== undefined && (
+          <span className="h-1 w-10 overflow-hidden rounded-full bg-floor">
+            <span className={`block h-full rounded-full ${over ? 'bg-hard' : 'bg-ink/40'}`} style={{ width: `${Math.min(1, used / capacity) * 100}%` }} />
+          </span>
+        )}
+        <span className={`text-[12px] tabular-nums ${over ? 'font-semibold text-hard' : 'text-dim'}`}>{count ?? `${used}/${capacity}`}</span>
       </div>
-      <ul>{children}</ul>
-    </>
+      <ul className="pb-1">{children}</ul>
+    </div>
   )
 }
 
-/** One guest line: drag handle, name, size/needs (or proposed destination), pin toggle. Selecting shows the seat explanation. */
+/** Round initials chip tinted by the guest's group; matches the seat chips on the canvas. */
+export function GuestChip({ g, size = 24 }: { g: Guest; size?: number }) {
+  return (
+    <span
+      className="grid flex-none place-items-center rounded-full font-display text-[10px] font-bold text-ink ring-1 ring-ink/15"
+      style={{ width: size, height: size, background: groupTint(g.group) }}
+    >
+      {initials(g.name)}
+    </span>
+  )
+}
+
+/** One guest line: chip, name, size/needs (or proposed destination), pin toggle. Selecting shows the seat explanation. */
 function GuestRow({ g, sev, movedTo, seated, pinned }: { g: Guest; sev?: 'hard' | 'soft'; movedTo?: string; seated: boolean; pinned: boolean }) {
   const { guestId, selectGuest } = useUi()
   const selected = guestId === g.id
@@ -104,21 +129,23 @@ function GuestRow({ g, sev, movedTo, seated, pinned }: { g: Guest; sev?: 'hard' 
           const seatableId = useChart.getState().chart.assignments.find((a) => a.guestId === g.id)?.seatableId ?? null
           selectGuest(selected ? null : g.id, selected ? null : seatableId)
         }}
-        className={`group flex cursor-grab items-center px-2.5 py-0.5 ${selected ? 'bg-[#141414]' : 'hover:bg-[#0b0b0b]'} ${color}`}
+        className={`group flex cursor-grab items-center gap-2.5 rounded-lg px-2 py-1 active:cursor-grabbing ${selected ? 'bg-ink text-white' : 'hover:bg-floor'}`}
       >
-        <span className="mr-1.5 text-[#444]">⠿</span>
-        <span className="truncate">{g.name}</span>
-        <span className="ml-auto pl-2 text-[11px] whitespace-nowrap text-dim">{movedTo ? <span className="text-moved">→ {movedTo}</span> : guestTags(g)}</span>
+        <GuestChip g={g} />
+        <span className={`truncate font-medium ${selected ? '' : color}`}>{g.name}</span>
+        <span className={`ml-auto pl-1 text-[12px] whitespace-nowrap ${selected ? 'text-white/70' : 'text-dim'}`}>
+          {movedTo ? <span className="font-medium text-moved">→ {movedTo}</span> : guestBadges(g)}
+        </span>
         {seated && (
           <button
             title={pinned ? 'Unpin' : 'Pin to this table'}
-            className={`ml-2 text-[11px] ${pinned ? 'text-white' : 'text-[#444] opacity-0 group-hover:opacity-100'}`}
+            className={`text-[14px] ${pinned ? (selected ? 'text-white' : 'text-wine') : 'text-faint opacity-0 group-hover:opacity-100 hover:text-ink'}`}
             onClick={(e) => {
               e.stopPropagation()
               useChart.getState().pinGuest(g.id, !pinned)
             }}
           >
-            pin
+            <Icon name="pin" fill={pinned ? 'currentColor' : 'none'} />
           </button>
         )}
       </div>
@@ -138,7 +165,13 @@ function SeatExplanation({ guestId }: { guestId: string }) {
       live = false
     }
   }, [guestId, chart])
-  return <p className="px-2.5 pt-0.5 pb-1.5 pl-6 text-[12px] text-dim">{text?.key === chart ? text.value : 'Explaining'}</p>
+  const ready = text?.key === chart
+  return (
+    <p className={`mx-2 mt-1 mb-2 flex gap-2 rounded-lg border-l-2 border-wine bg-wine-soft px-2.5 py-1.5 text-[13px] ${ready ? 'text-ink' : 'text-dim'}`}>
+      <Icon name="sparkle" className="mt-0.5 flex-none text-wine" />
+      {ready ? text.value : 'Thinking about this seat'}
+    </p>
+  )
 }
 
 /** Compact list of broken rules; click one to select its first guest. */
@@ -146,66 +179,25 @@ function Problems() {
   const chart = useChart((s) => s.chart)
   const violations = violationsOf(chart)
   if (violations.length === 0) return null
-  const hard = violations.filter((v) => v.hard).length
   return (
-    <div className="border-t border-line">
-      <div className="flex justify-between px-2.5 pt-2 pb-1 font-semibold">
-        Problems
-        <span className="font-normal">
-          {hard > 0 && <span className="text-hard">{hard} hard</span>}
-          {hard > 0 && hard < violations.length && <span className="text-dim"> · </span>}
-          {violations.length > hard && <span className="text-soft">{violations.length - hard} soft</span>}
-        </span>
+    <div className="border-t border-line px-2 pt-2.5">
+      <div className="px-2 pb-1 font-display text-[15px] font-semibold">
+        Needs attention <span className="font-sans text-[12px] font-normal text-dim tabular-nums">{violations.length}</span>
       </div>
-      <ul className="max-h-28 overflow-y-auto pb-1.5">
+      <ul className="max-h-32 overflow-y-auto pb-2">
         {violations.map((v, i) => (
           <li key={`${v.ruleId}-${i}`}>
             <button
-              className={`w-full truncate px-2.5 text-left text-[12px] ${v.hard ? 'text-hard' : 'text-soft'}`}
+              className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-[13px] hover:bg-floor"
               title={v.message}
               onClick={() => useUi.getState().selectGuest(v.guestIds[0] ?? null, v.seatableIds[0] ?? null)}
             >
-              {v.message}
+              <i className={`size-2 flex-none rounded-full ${v.hard ? 'bg-hard' : 'bg-soft'}`} />
+              <span className="truncate">{v.message}</span>
             </button>
           </li>
         ))}
       </ul>
-    </div>
-  )
-}
-
-/** Plain-language rule input. Enter parses, repairs and proposes; ambiguous names ask back first. */
-function RuleBox() {
-  const [text, setText] = useState('')
-  const { flow, run } = useRuleFlow()
-  const submit = async (t: string) => {
-    if (!t.trim()) return
-    const proposal = await run(t)
-    if (proposal) useChart.getState().propose(proposal)
-  }
-  return (
-    <div className="border-t border-line p-2.5">
-      <input
-        className="w-full border border-[#555] bg-black px-2 py-1.5 outline-none placeholder:text-dim focus:border-white"
-        placeholder="Add a rule"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === 'Escape') e.stopPropagation()
-          if (e.key === 'Enter') submit(text)
-          if (e.key === 'Escape') e.currentTarget.blur()
-        }}
-      />
-      <div className="pt-1.5 text-[12px] empty:hidden">
-        <FlowResult
-          flow={flow}
-          onPick={(name, guest) => {
-            const next = resolveName(text, name, guest)
-            setText(next)
-            submit(next)
-          }}
-        />
-      </div>
     </div>
   )
 }

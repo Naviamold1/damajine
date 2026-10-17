@@ -25,6 +25,9 @@ export const useUi = create<UiState>()((set) => ({
   setImportOpen: (importOpen) => set({ importOpen, commandOpen: false }),
 }))
 
+/** Command bar shortcut label for this platform. */
+export const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'
+
 /** MIME type for dragging a guest from the sidebar onto the canvas. */
 export const GUEST_DRAG = 'application/x-damajine-guest'
 

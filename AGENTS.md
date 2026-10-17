@@ -24,6 +24,20 @@ Vite, React 19, TypeScript, Tailwind 4, Zustand, Zod, Vitest. shadcn is not init
 - `src/presets/`: wedding, corporate, restaurant, hackathon, auditorium (layout + decor + rule templates + demo guests).
 - `api/`: one serverless function that holds the Gemini key. The key never ships to the client.
 
+## Design ("supra table")
+
+The UI design is settled. Extend it; do not restyle it. Tokens live in `src/index.css` `@theme`, so use them (`text-ink`, `bg-floor`, `text-wine`, `shadow-island`...) instead of raw hex.
+
+- Light theme. White chrome (header, sidebar), cool gray dotted `floor` for the canvas, `ink` text, `dim` / `faint` for secondary text.
+- One accent: Saperavi `wine`, used for selection, pins, the seated progress bar and the AI sparkle. Status colors are reserved for meaning: `hard` red, `soft` orange, `moved` teal (proposals).
+- Type: Gabarito (`font-display`) for the wordmark, headings, table labels and chip initials. Onest (`font-sans`) for everything else. Both are bundled via `@fontsource-variable`, so they work offline.
+- The signature is guest chips: initials on a pastel tinted by group (`groupTint` in `canvas/derived.ts`). The same `GuestChip` appears in the sidebar, command bar, proposal card and import preview. Status states replace the tint with a solid status color and white text.
+- Floating canvas controls are white rounded "islands" (`rounded-xl bg-white shadow-island`): legend top left, add-table dock top right, zoom bottom right, `AskPill` / `ProposalBar` bottom center.
+- Dialogs: `rounded-2xl` white card on `bg-ink/25`, with a `bg-floor` footer for key hints.
+- Icons come from `canvas/icons.tsx` (stroke, 1em). Add new paths there rather than pulling in an icon library.
+- Motion: only the one-shot `animate-pop` (dialogs, proposed moves), disabled under reduced motion. No looping animations.
+- Copy: plain, sentence case, says what happens ("Reseat all", "Import guests", "Read list"). Needs show as emoji in the UI (`guestBadges`) and as text in print (`guestTags`).
+
 ## Rules for working here
 
 - Keep it simple. Prefer the smallest change that works.

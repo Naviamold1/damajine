@@ -1,21 +1,43 @@
 @import "tailwindcss";
+@import "@fontsource-variable/gabarito";
+@import "@fontsource-variable/onest";
 
+/* Supra palette: white linen chrome, cool floor for the canvas, Saperavi wine as the one accent. */
 @theme {
-  --color-line: #262626;
-  --color-dim: #8c8c8c;
-  --color-hard: #ff5a5a;
-  --color-soft: #f2b33d;
-  --color-moved: #5aa9ff;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-ink: #17151f;
+  --color-floor: #eef0f5;
+  --color-line: #e3e5ec;
+  --color-dim: #6b6f80;
+  --color-faint: #a3a7b5;
+  --color-wine: #8e1b4f;
+  --color-wine-soft: #f7e8ef;
+  --color-hard: #e0393e;
+  --color-soft: #e08e00;
+  --color-moved: #0b9a8a;
+  --font-sans: "Onest Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Gabarito Variable", "Onest Variable", ui-sans-serif, sans-serif;
+  --shadow-island: 0 1px 2px rgb(23 21 31 / 0.06), 0 6px 20px rgb(23 21 31 / 0.08);
+  --animate-pop: pop 160ms cubic-bezier(0.2, 0.9, 0.3, 1.3);
 }
 
-:root { color-scheme: dark; scrollbar-color: #333 #000; }
+@keyframes pop {
+  from { opacity: 0; transform: scale(0.94); }
+}
+
+:root { color-scheme: light; }
 html, body, #root { height: 100%; }
-body { margin: 0; background: #000; color: #fff; font-size: 13px; line-height: 1.4; }
+body { margin: 0; background: #fff; color: var(--color-ink); font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+:focus-visible { outline: 2px solid var(--color-wine); outline-offset: 2px; }
+
+/* SVG nodes animate around their own center. */
+svg .animate-pop { transform-box: fill-box; transform-origin: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pop { animation: none; }
+}
 
 /* Print: white page, only PrintView renders (app chrome is print:hidden). */
 @media print {
-  :root { color-scheme: light; }
   html, body, #root { height: auto; }
   body { background: #fff; color: #000; }
   @page { margin: 12mm; }

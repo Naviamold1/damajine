@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent } from 'react'
 import type { Seatable } from '@/domain/types'
 import { useChart } from '@/store/chart'
-import { severities, shortName, violationsOf } from './derived'
+import { AskPill } from './AskPill'
+import { groupTint, initials, severities, shortName, violationsOf } from './derived'
+import { Icon } from './icons'
 import { chartBounds, guestPoints, layoutSlots, seatableAt, seatOffsets, toCanvas, type Point } from './layout'
 import { Palette } from './Palette'
 import { ProposalBar } from './ProposalBar'
 import { SeatableShape, type Tone } from './SeatableShape'
 import { GUEST_DRAG, isTyping, useUi } from './ui'
 import { useViewport, type View } from './useViewport'
+
+/** Seat chip radius in canvas units. Seat spacing in `seatOffsets` leaves room for it. */
+const CHIP = 10.5
 
 type Gesture =
   | { kind: 'pan'; client: Point; view: View; moved: boolean }
@@ -35,7 +40,7 @@ function useSpaceHeld() {
 }
 
 /**
- * The seating canvas: decor, seatables, seat dots, violations and the pending proposal overlay.
+ * The seating canvas: decor, seatables, seat chips (initials tinted by group), violations and the pending proposal overlay.
  * Drag background (or space-drag) to pan, wheel to zoom, drag a table to move it (one undo step),
  * drop a guest from the sidebar onto a table to seat them.
  */
@@ -123,12 +128,11 @@ export function Canvas() {
     selectGuest(id, target.id)
   }
 
-  const highlight = dropId ?? seatableId
-  const tone = (s: Seatable): Tone => (s.id === highlight ? 'select' : (sev.seatables.get(s.id) ?? null))
+  const tone = (s: Seatable): Tone => (s.id === dropId ? 'drop' : s.id === seatableId ? 'select' : (sev.seatables.get(s.id) ?? null))
   const used = (id: string) => (shown.get(id) ?? []).filter(Boolean).length
 
   return (
-    <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
+    <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-floor">
       <svg
         ref={svgRef}
         className={`block h-full w-full touch-none select-none ${space ? 'cursor-grab' : ''}`}
@@ -142,9 +146,12 @@ export function Canvas() {
       >
         <defs>
           <pattern id="grid" width={24 * view.k} height={24 * view.k} x={view.x} y={view.y} patternUnits="userSpaceOnUse">
-            <circle cx={1} cy={1} r={0.8} fill="#1c1c1c" />
+            <circle cx={1.2} cy={1.2} r={1.2} fill="#d3d7e2" />
           </pattern>
-          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <filter id="lift" x="-20%" y="-20%" width="140%" height="150%">
+            <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#17151f" floodOpacity="0.1" />
+          </filter>
+          <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto">
             <path d="M0 0L10 5L0 10z" className="fill-moved" />
           </marker>
         </defs>
@@ -152,8 +159,8 @@ export function Canvas() {
         <g transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
           {chart.decor.map((d) => (
             <g key={d.id} className="pointer-events-none">
-              <rect x={d.x - d.w / 2} y={d.y - d.h / 2} width={d.w} height={d.h} className="fill-none stroke-[#2e2e2e]" />
-              <text x={d.x} y={d.y + 4} textAnchor="middle" className="fill-[#5c5c5c] text-[11px]">
+              <rect x={d.x - d.w / 2} y={d.y - d.h / 2} width={d.w} height={d.h} rx={10} className="fill-[#e2e5ed] stroke-[#cfd3de] [stroke-width:1.5]" />
+              <text x={d.x} y={d.y + 4} textAnchor="middle" className="fill-faint font-display text-[12px] font-bold tracking-[0.12em] uppercase">
                 {d.label}
               </text>
             </g>
@@ -171,7 +178,7 @@ export function Canvas() {
                 const a = points.get(v.guestIds[i])
                 const b = points.get(id)
                 return a && b ? (
-                  <line key={`${v.ruleId}-${id}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className={`${v.hard ? 'stroke-hard' : 'stroke-soft'} [stroke-dasharray:2_2]`} />
+                  <line key={`${v.ruleId}-${id}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className={`${v.hard ? 'stroke-hard' : 'stroke-soft'} [stroke-dasharray:3_3] [stroke-width:2]`} />
                 ) : null
               }),
             )}
@@ -183,12 +190,12 @@ export function Canvas() {
             if (!a) return null
             return (
               <g key={id} className="pointer-events-none">
-                <circle cx={a.x} cy={a.y} r={5} className="fill-none stroke-moved [stroke-dasharray:2_2]" />
+                <circle cx={a.x} cy={a.y} r={CHIP} className="fill-none stroke-moved [stroke-dasharray:3_3] [stroke-width:1.5]" />
                 {b && (
                   <path
                     d={`M${a.x} ${a.y} Q ${(a.x + b.x) / 2} ${Math.min(a.y, b.y) - 50} ${b.x} ${b.y}`}
                     markerEnd="url(#arrow)"
-                    className="fill-none stroke-moved [stroke-dasharray:4_3] [stroke-width:1.2]"
+                    className="fill-none stroke-moved [stroke-dasharray:5_4] [stroke-width:2]"
                   />
                 )}
               </g>
@@ -199,21 +206,25 @@ export function Canvas() {
             seatOffsets(s).map((off, i) => {
               const p = toCanvas(s, off)
               const slot = shown.get(s.id)?.[i]
-              if (!slot) return <circle key={`${s.id}-${i}`} cx={p.x} cy={p.y} r={4} className="pointer-events-none fill-none stroke-[#3d3d3d]" />
+              if (!slot)
+                return <circle key={`${s.id}-${i}`} cx={p.x} cy={p.y} r={CHIP - 1} className="pointer-events-none fill-white/60 stroke-[#c4c8d4] [stroke-dasharray:3_3] [stroke-width:1.2]" />
               const g = slot.guest
-              const state = proposal && moved.has(g.id) ? 'fill-moved' : sev.guests.get(g.id) === 'hard' ? 'fill-hard' : sev.guests.get(g.id) === 'soft' ? 'fill-soft' : g.needs.includes('kid') ? 'fill-[#bbb]' : 'fill-[#e6e6e6]'
-              const big = state !== 'fill-[#e6e6e6]' && state !== 'fill-[#bbb]'
+              const state = proposal && moved.has(g.id) ? 'moved' : (sev.guests.get(g.id) ?? null)
+              const fill = state === 'moved' ? 'fill-moved' : state === 'hard' ? 'fill-hard' : state === 'soft' ? 'fill-soft' : ''
               return (
                 <g
                   key={`${s.id}-${i}`}
-                  className="cursor-pointer"
+                  className={`cursor-pointer ${state === 'moved' ? 'animate-pop' : ''}`}
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={() => selectGuest(g.id, s.id)}
                 >
-                  {(pinned.has(g.id) || g.id === guestId) && slot.first && (
-                    <circle cx={p.x} cy={p.y} r={7} className={`fill-none ${g.id === guestId ? 'stroke-white [stroke-width:1.5]' : 'stroke-[#bbb]'}`} />
-                  )}
-                  <circle cx={p.x} cy={p.y} r={big ? 5 : 4.2} className={state} />
+                  <title>{g.name}</title>
+                  {g.id === guestId && <circle cx={p.x} cy={p.y} r={CHIP + 3.5} className="fill-none stroke-wine [stroke-width:2.5]" />}
+                  <circle cx={p.x} cy={p.y} r={CHIP} className={`${fill} stroke-ink/25`} style={fill ? undefined : { fill: groupTint(g.group) }} />
+                  <text x={p.x} y={p.y + 3.2} textAnchor="middle" className={`pointer-events-none font-display text-[9px] font-bold ${state ? 'fill-white' : 'fill-ink'} ${slot.first ? '' : 'opacity-40'}`}>
+                    {slot.first ? initials(g.name) : '+'}
+                  </text>
+                  {pinned.has(g.id) && slot.first && <circle cx={p.x + 7.5} cy={p.y - 7.5} r={3} className="fill-wine stroke-white [stroke-width:1.2]" />}
                 </g>
               )
             }),
@@ -228,14 +239,14 @@ export function Canvas() {
             if (!g) return null
             const anchor = p.dir.x > 0.3 ? 'start' : p.dir.x < -0.3 ? 'end' : 'middle'
             const dy = anchor === 'middle' ? (p.dir.y < 0 ? -2 : 9) : 3
-            const color = isMoved ? 'fill-moved' : s === 'hard' ? 'fill-hard' : s === 'soft' ? 'fill-soft' : 'fill-white'
+            const color = isMoved ? 'fill-moved' : s === 'hard' ? 'fill-hard' : s === 'soft' ? 'fill-soft' : 'fill-wine'
             return (
               <text
                 key={id}
-                x={p.x + p.dir.x * 9}
-                y={p.y + p.dir.y * 9 + dy}
+                x={p.x + p.dir.x * (CHIP + 5)}
+                y={p.y + p.dir.y * (CHIP + 5) + dy}
                 textAnchor={anchor}
-                className={`pointer-events-none stroke-black text-[9.5px] font-semibold [paint-order:stroke] [stroke-width:3] ${color}`}
+                className={`pointer-events-none stroke-floor text-[10.5px] font-semibold [paint-order:stroke] [stroke-linejoin:round] [stroke-width:4] ${color}`}
               >
                 {shortName(g.name)}
               </text>
@@ -246,32 +257,40 @@ export function Canvas() {
 
       <Legend />
       <Palette center={() => { const r = svgRef.current?.getBoundingClientRect(); return clientToCanvas((r?.left ?? 0) + (r?.width ?? 0) / 2, (r?.top ?? 0) + (r?.height ?? 0) / 2) }} />
-      <div className="absolute right-3 bottom-3 flex items-center gap-3 text-dim">
-        <button className="hover:text-white" onClick={() => zoomBy(1 / 1.25)}>−</button>
-        <span className="w-10 text-center tabular-nums">{Math.round(view.k * 100)}%</span>
-        <button className="hover:text-white" onClick={() => zoomBy(1.25)}>+</button>
-        <button className="hover:text-white" onClick={() => fit(chartBounds(chart))}>Fit</button>
+      <div className="absolute right-4 bottom-4 flex items-center rounded-xl bg-white p-1 text-dim shadow-island">
+        <button className={ZOOM_BTN} title="Zoom out" onClick={() => zoomBy(1 / 1.25)}>
+          <Icon name="minus" />
+        </button>
+        <span className="w-11 text-center text-[12px] font-medium tabular-nums">{Math.round(view.k * 100)}%</span>
+        <button className={ZOOM_BTN} title="Zoom in" onClick={() => zoomBy(1.25)}>
+          <Icon name="plus" />
+        </button>
+        <button className={`${ZOOM_BTN} w-auto gap-1 px-2 text-[13px] font-medium`} title="Fit everything in view" onClick={() => fit(chartBounds(chart))}>
+          <Icon name="fit" /> Fit
+        </button>
       </div>
-      <ProposalBar />
+      {proposal ? <ProposalBar /> : <AskPill />}
     </div>
   )
 }
 
-/** Dot legend, top left of the canvas. */
+const ZOOM_BTN = 'flex h-7 w-7 items-center justify-center rounded-lg text-[15px] hover:bg-floor hover:text-ink'
+
+/** Chip legend, top left of the canvas. */
 function Legend() {
   const items = [
-    ['seated', 'bg-[#e6e6e6]'],
-    ['empty', 'border border-[#555]'],
-    ['pinned', 'bg-[#e6e6e6] outline outline-1 outline-offset-1 outline-[#bbb]'],
-    ['hard', 'bg-hard'],
-    ['soft', 'bg-soft'],
-    ['proposed', 'bg-moved'],
+    ['seated', 'bg-[#a0d2ff]'],
+    ['empty', 'border border-dashed border-[#b9bdca] bg-white'],
+    ['rule broken', 'bg-hard'],
+    ['rule bent', 'bg-soft'],
+    ['proposed move', 'bg-moved'],
+    ['pinned', 'size-2! bg-wine ring-2 ring-white'],
   ]
   return (
-    <div className="pointer-events-none absolute top-2.5 left-3 flex gap-3 text-[11px] text-dim">
+    <div className="pointer-events-none absolute top-4 left-4 flex gap-3.5 rounded-xl bg-white/90 px-3 py-1.5 text-[12px] text-dim shadow-island">
       {items.map(([label, cls]) => (
-        <span key={label} className="flex items-center gap-1">
-          <i className={`inline-block size-2 rounded-full ${cls}`} />
+        <span key={label} className="flex items-center gap-1.5">
+          <i className={`inline-block size-2.5 rounded-full ${cls}`} />
           {label}
         </span>
       ))}

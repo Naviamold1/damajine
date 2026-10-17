@@ -42,6 +42,38 @@ const NEED_SHORT: Record<Guest['needs'][number], string> = {
 /** Compact party size and needs, e.g. "×2 wc veg". */
 export const guestTags = (g: Guest) => [g.size > 1 ? `×${g.size}` : '', ...g.needs.map((n) => NEED_SHORT[n])].filter(Boolean).join(' ')
 
+const NEED_ICON: Record<Guest['needs'][number], string> = {
+  wheelchair: '♿',
+  vegetarian: '🥕',
+  vegan: '🌱',
+  allergy: '⚠️',
+  kid: '🧸',
+}
+
+/** Party size and needs as glyphs for the sidebar and import preview, e.g. "×2 ♿ 🥕". */
+export const guestBadges = (g: Guest) => [g.size > 1 ? `×${g.size}` : '', ...g.needs.map((n) => NEED_ICON[n])].filter(Boolean).join(' ')
+
+// Coral sits last: it is closest to the hard-violation red.
+const TINTS = ['#a0d2ff', '#a8e6cf', '#cdb9f5', '#ffe08a', '#f9b4d9', '#c9dda0', '#ffcba4', '#9de3e8', '#d9c3a5', '#ffad9e']
+const tintOf = new Map<string, string>()
+
+/**
+ * Pastel per guest group, so a family or team reads as one color on canvas and in the sidebar.
+ * Groups get the next unused tint the first time they are seen, which keeps neighbours distinct (unlike hashing).
+ */
+export function groupTint(group: string | undefined) {
+  if (!group) return '#dfe2ea'
+  let t = tintOf.get(group)
+  if (!t) tintOf.set(group, (t = TINTS[tintOf.size % TINTS.length]))
+  return t
+}
+
+/** "Nino Beridze" -> "NB", for seat chips. */
+export function initials(name: string) {
+  const [first = '', last = ''] = name.split(' ')
+  return (first[0] ?? '') + (last[0] ?? '')
+}
+
 /** "Nino Beridze" -> "Nino B." for labels on the canvas. */
 export function shortName(name: string) {
   const [first, last] = name.split(' ')
