@@ -1,4 +1,14 @@
 @import "tailwindcss";
 
-:root { color-scheme: dark; }
-body { margin: 0; background: #000; color: #fff; }
+@theme {
+  --color-line: #262626;
+  --color-dim: #8c8c8c;
+  --color-hard: #ff5a5a;
+  --color-soft: #f2b33d;
+  --color-moved: #5aa9ff;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+:root { color-scheme: dark; scrollbar-color: #333 #000; }
+html, body, #root { height: 100%; }
+body { margin: 0; background: #000; color: #fff; font-size: 13px; line-height: 1.4; }

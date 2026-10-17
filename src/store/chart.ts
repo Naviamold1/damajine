@@ -38,8 +38,9 @@ const HISTORY_LIMIT = 100
 export const useChart = create<ChartState>()(
   persist(
     (set, get) => {
+      // Any edit makes a pending proposal stale (it was computed against the old chart), so drop it.
       const commit: ChartState['commit'] = (update) =>
-        set((s) => ({ chart: update(s.chart), past: [...s.past, s.chart].slice(-HISTORY_LIMIT), future: [] }))
+        set((s) => ({ chart: update(s.chart), past: [...s.past, s.chart].slice(-HISTORY_LIMIT), future: [], proposal: null }))
 
       return {
         chart: emptyChart(),
