@@ -1,6 +1,6 @@
 # Damajine
 
-Seating canvas for any gathering: weddings, corporate events, restaurants. One engine, three presets. Gemini turns plain language into rules; a deterministic solver does the seating. Built for HACKTOBERFEST Georgia 2026 (17-18 Oct), so speed and a working demo beat polish. See `PLAN.md` for phases and the demo.
+Seating canvas for any gathering: weddings, corporate events, restaurants, hackathons, auditoriums. One engine, five presets. Gemini turns plain language into rules; a deterministic solver does the seating. Built for HACKTOBERFEST Georgia 2026 (17-18 Oct), so speed and a working demo beat polish. See `PLAN.md` for phases and the demo.
 
 ## Commands
 
@@ -21,7 +21,7 @@ Vite, React 19, TypeScript, Tailwind 4, Zustand, Zod, Vitest. shadcn is not init
 - `src/engine/`: pure, deterministic solver (`findViolations`, `solve`, `repair`). No React, no I/O, no randomness without a seed. Must respect pinned assignments, hard rules, and party size vs seats.
 - `src/store/chart.ts`: Zustand store with undo/redo and local persistence. Every edit, human or AI, goes through `commit` so undo covers it.
 - `src/ai/`: Gemini calls. The model returns structured output validated by the Zod schemas. It never mutates the chart directly; its result becomes a proposal the user keeps or reverts.
-- `src/presets/`: wedding, corporate, restaurant (layout + rule templates + demo guests).
+- `src/presets/`: wedding, corporate, restaurant, hackathon, auditorium (layout + decor + rule templates + demo guests).
 - `api/`: one serverless function that holds the Gemini key. The key never ships to the client.
 
 ## Rules for working here

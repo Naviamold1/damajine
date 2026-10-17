@@ -1,6 +1,6 @@
 # Damajine: implementation plan
 
-Seating canvas for any gathering. Wedding, corporate event, restaurant. One engine, three presets. Gemini turns plain language into rules; a deterministic solver does the seating.
+Seating canvas for any gathering. Wedding, corporate event, restaurant, hackathon, auditorium. One engine, five presets. Gemini turns plain language into rules; a deterministic solver does the seating.
 
 Hackathon: 17-18 Oct 2026, demos Sunday evening.
 
@@ -40,7 +40,7 @@ Hackathon: 17-18 Oct 2026, demos Sunday evening.
 
 1. `api/gemini.ts` Vercel function. Key in env, JSON schema mode, rate limit by simple per-IP cap.
 2. `ai/rules.ts`: text to `Rule[]`, resolving names to guest ids, validated with Zod. Ask back when a name is ambiguous.
-3. `presets/`: wedding, corporate, restaurant. Each = layout, rule templates, demo guests.
+3. `presets/`: wedding, corporate, restaurant, hackathon (library room, team tables), auditorium (rows). Each = layout, rule templates, demo guests.
 4. `ai/import.ts`: pasted messy list to `Guest[]`.
 5. `ai/explain.ts`: why a guest sits where they do, using solver facts as grounding.
 
@@ -57,7 +57,7 @@ Hackathon: 17-18 Oct 2026, demos Sunday evening.
 - Rehearse the three demos below. Pre-seed data so nothing depends on live typing luck.
 - Fallback for Gemini failure: cached responses for the demo prompts.
 - Deploy to Vercel, test from a clean browser.
-- Slides: problem, 3 presets, live demo, "where this goes" (live restaurant floor, shared sessions).
+- Slides: problem, presets, live demo, "where this goes" (live restaurant floor, shared sessions).
 
 ## Risks
 
