@@ -9,7 +9,8 @@ const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'
 
 /**
  * Ctrl/Cmd+K overlay: type a rule, Enter previews the parsed rules and moves, Enter again proposes it.
- * Shows the current preset's rule templates while empty. Esc or a click outside closes it.
+ * Shows "Import guests" and the current preset's rule templates while empty; "/import" opens the import panel too.
+ * Esc or a click outside closes it.
  */
 export function CommandBar() {
   const open = useUi((s) => s.commandOpen)
@@ -26,6 +27,7 @@ function CommandBarOpen() {
 
   const go = (t: string) => {
     if (!t.trim()) return
+    if (t.trim() === '/import') return useUi.getState().setImportOpen(true)
     if (flow.status === 'ready' && t === ranText) {
       useChart.getState().propose(flow.proposal)
       close()
@@ -60,8 +62,13 @@ function CommandBarOpen() {
             <FlowResult flow={flow} moves onPick={(name, guest) => go(resolveName(text, name, guest))} />
           </div>
         )}
-        {flow.status === 'idle' && templates.length > 0 && (
+        {flow.status === 'idle' && (
           <ul className="border-t border-line py-1">
+            <li>
+              <button className="w-full px-2.5 py-0.5 text-left hover:bg-[#141414]" onClick={() => useUi.getState().setImportOpen(true)}>
+                Import guests <span className="text-dim">/import</span>
+              </button>
+            </li>
             {templates.map((t) => (
               <li key={t}>
                 <button className="w-full px-2.5 py-0.5 text-left text-dim hover:bg-[#141414] hover:text-white" onClick={() => go(t)}>

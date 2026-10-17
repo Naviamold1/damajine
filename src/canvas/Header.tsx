@@ -3,7 +3,7 @@ import { useChart } from '@/store/chart'
 import { presetOf, solveProposal, violationsOf } from './derived'
 import { useUi } from './ui'
 
-/** Top bar: preset switcher, seated count, violation counts, solve, command bar, undo/redo. */
+/** Top bar: preset switcher, seated count, violation counts, solve, command bar, import, print, undo/redo. */
 export function Header() {
   const chart = useChart((s) => s.chart)
   const canUndo = useChart((s) => s.past.length > 0)
@@ -47,6 +47,12 @@ export function Header() {
       </button>
       <button className={btn} onClick={() => useUi.getState().setCommandOpen(true)}>
         Rule…
+      </button>
+      <button className={btn} onClick={() => useUi.getState().setImportOpen(true)}>
+        Import
+      </button>
+      <button className={btn} onClick={() => window.print()}>
+        Print
       </button>
       <button className={btn} title="Undo (Ctrl+Z)" disabled={!canUndo} onClick={undo}>
         ↶
