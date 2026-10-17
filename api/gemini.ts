@@ -42,7 +42,7 @@ export async function POST(request: Request): Promise<Response> {
 
   const key = process.env.GEMINI_API_KEY
   if (!key) return json({ error: 'GEMINI_API_KEY is not set' }, 500)
-  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+  const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite'
 
   const body = Body.safeParse(await request.json().catch(() => null))
   if (!body.success) return json({ error: 'Invalid request body' }, 400)
@@ -62,7 +62,7 @@ export async function POST(request: Request): Promise<Response> {
   ).catch(() => null)
 
   if (!res?.ok) {
-    console.error(`gemini ${task} failed: ${res?.status ?? 'network error'}`)
+    console.error(`gemini ${task} failed: ${res?.status ?? 'network error'} ${res ? (await res.text()).slice(0, 300) : ''}`)
     return json({ error: 'Gemini request failed' }, 502)
   }
   const reply = GeminiReply.safeParse(await res.json().catch(() => null))
