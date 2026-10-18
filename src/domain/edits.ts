@@ -26,11 +26,14 @@ export function movedBetween(before: Assignment[], after: Assignment[]): string[
   return [...new Set([...a.keys(), ...b.keys()])].filter((id) => a.get(id) !== b.get(id))
 }
 
-/** Drop seatables; their guests become unseated. */
+/** Drop seatables; their guests become unseated, and zone rules for a zone no table has anymore go too. */
 export function removeSeatables(chart: Chart, ids: Set<string>): Chart {
+  const seatables = chart.seatables.filter((s) => !ids.has(s.id))
+  const zones = new Set(seatables.flatMap((s) => (s.zone ? [s.zone] : [])))
   return {
     ...chart,
-    seatables: chart.seatables.filter((s) => !ids.has(s.id)),
+    seatables,
     assignments: chart.assignments.filter((a) => !ids.has(a.seatableId)),
+    rules: chart.rules.filter((r) => r.type !== 'zone' || zones.has(r.zone)),
   }
 }

@@ -85,6 +85,8 @@ export const Assignment = z.object({
   guestId: z.string(),
   seatableId: z.string(),
   pinned: z.boolean().default(false),
+  /** First seat index at the seatable (a party takes the next `size` seats). Set by dragging a chip; unset fills the first free seats. */
+  seat: z.number().int().min(0).optional(),
 })
 export type Assignment = z.infer<typeof Assignment>
 

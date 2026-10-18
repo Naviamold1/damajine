@@ -58,15 +58,21 @@ function validAssignments(chart: Chart): Assignment[] {
   })
 }
 
-/** Assignments in guest order, unseated ids, and the violations left in the resulting chart. */
+/**
+ * Assignments in guest order, unseated ids, and the violations left in the resulting chart.
+ * A guest who stays at the same seatable keeps their chosen seat; moving to another seatable clears it.
+ */
 function result(chart: Chart, seating: Seating, pins: Assignment[]): SolveResult {
   const pinned = new Set(pins.map((a) => a.guestId))
+  const before = new Map(chart.assignments.map((a) => [a.guestId, a]))
   const assignments: Assignment[] = []
   const unseated: string[] = []
   for (const g of chart.guests) {
     if (!seating.guests.has(g.id)) continue
     const seatableId = seating.seatOf.get(g.id)
-    if (seatableId) assignments.push({ guestId: g.id, seatableId, pinned: pinned.has(g.id) })
+    const prev = before.get(g.id)
+    const seat = prev?.seatableId === seatableId ? prev?.seat : undefined
+    if (seatableId) assignments.push({ guestId: g.id, seatableId, pinned: pinned.has(g.id), ...(seat !== undefined && { seat }) })
     else unseated.push(g.id)
   }
   return { assignments, unseated, violations: findViolations({ ...chart, assignments }) }

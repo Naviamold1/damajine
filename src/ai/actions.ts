@@ -283,8 +283,10 @@ export function applyActions(chart: Chart, drafts: ActionDraft[]): Plan {
         case 'removeTable': {
           const targets = tables(a.tableIds, a.tableId)
           if (targets.length === 0) throw new Error('removeTable needs a table')
+          const before = c.rules
           c = removeSeatables(c, new Set(targets.map((t) => t.id)))
           plan.changes.push(`Remove ${list(targets.map((t) => t.label))}`)
+          for (const r of before.filter((r) => !c.rules.includes(r))) plan.changes.push(`Drop rule: ${describeRule(r, c.guests)}`)
           break
         }
         case 'addGuest': {

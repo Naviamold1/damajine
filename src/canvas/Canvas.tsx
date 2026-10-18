@@ -5,7 +5,7 @@ import { AskPill } from './AskPill'
 import { DecorShape } from './DecorShape'
 import { groupTint, initials, severities, shortName, violationsOf } from './derived'
 import { Icon } from './icons'
-import { chartBounds, guestPoints, layoutSlots, seatableAt, seatOffsets, toCanvas, type Point } from './layout'
+import { chartBounds, guestPoints, layoutSlots, seatableAt, seatAt, seatOffsets, toCanvas, type Point } from './layout'
 import { Palette } from './Palette'
 import { ProposalBar } from './ProposalBar'
 import { SeatableShape, type Tone } from './SeatableShape'
@@ -24,9 +24,23 @@ type Gesture =
   | { kind: 'pan'; client: Point; view: View; moved: boolean; select?: string }
   | { kind: 'move'; target: 'seatable' | 'decor'; id: string; start: Point; orig: Point; moved: boolean }
   | { kind: 'resize'; id: string }
+  /** Dragging a seated guest's chip; `from` is their seatable, for the click-to-select case. */
+  | { kind: 'guest'; id: string; from: string; start: Point; moved: boolean }
 
-/** Uncommitted geometry while dragging; committed as one undo step on release. */
-type Draft = { kind: 'seatable'; id: string; x: number; y: number } | { kind: 'decor'; decor: Decor }
+/** A seat on the canvas: seatable id plus seat index. */
+type SeatRef = { sid: string; seat: number }
+
+/**
+ * Uncommitted state while dragging; committed as one undo step on release.
+ * `guest`: the dragged chip's position and the seat it would land on (null when no seat is close enough).
+ */
+type Draft =
+  | { kind: 'seatable'; id: string; x: number; y: number }
+  | { kind: 'decor'; decor: Decor }
+  | { kind: 'guest'; id: string; x: number; y: number; target: SeatRef | null }
+
+/** How close (canvas units) the pointer must be to a seat for a chip to snap to it. */
+const SNAP = 30
 
 /** True while the space bar is held (outside inputs), for space-drag panning. */
 function useSpaceHeld() {
@@ -58,7 +72,7 @@ function useSpaceHeld() {
 export function Canvas() {
   const chart = useChart((s) => s.chart)
   const proposal = useChart((s) => s.proposal)
-  const { moveSeatable, moveGuest, updateDecor } = useChart.getState()
+  const { moveSeatable, moveGuest, updateDecor, applyAssignments } = useChart.getState()
   const { guestId, seatableId, decorId, selectGuest, selectSeatable, selectDecor } = useUi()
   const svgRef = useRef<SVGSVGElement>(null)
   const { view, setView, toCanvas: clientToCanvas, zoomBy, fit } = useViewport(svgRef)
@@ -115,6 +129,27 @@ export function Canvas() {
         : { kind: 'pan', client: { x: e.clientX, y: e.clientY }, view, moved: false, select: d.id }
   }
 
+  // While a proposal is pending, chips only select (the click handler); dragging would edit under the overlay.
+  const onGuestDown = (id: string, from: string) => (e: PointerEvent) => {
+    e.stopPropagation()
+    if (proposal || space || e.button !== 0) return
+    svgRef.current?.setPointerCapture(e.pointerId)
+    gesture.current = { kind: 'guest', id, from, start: clientToCanvas(e.clientX, e.clientY), moved: false }
+  }
+
+  /** Nearest seat within SNAP of a canvas point, on any table. */
+  const seatNear = (p: Point): SeatRef | null => {
+    let best: (SeatRef & { d: number }) | null = null
+    for (const s of seatables) {
+      for (const [seat, off] of seatOffsets(s).entries()) {
+        const q = toCanvas(s, off)
+        const d = Math.hypot(q.x - p.x, q.y - p.y)
+        if (d <= SNAP && (!best || d < best.d)) best = { sid: s.id, seat, d }
+      }
+    }
+    return best && { sid: best.sid, seat: best.seat }
+  }
+
   const onHandleDown = (d: Decor) => (e: PointerEvent) => {
     if (e.button !== 0) return
     e.stopPropagation()
@@ -147,6 +182,7 @@ export function Canvas() {
     }
     g.moved ||= Math.hypot(p.x - g.start.x, p.y - g.start.y) * view.k > 3
     if (!g.moved) return
+    if (g.kind === 'guest') return setDraft({ kind: 'guest', id: g.id, x: p.x, y: p.y, target: seatNear(p) })
     const x = Math.round(g.orig.x + p.x - g.start.x)
     const y = Math.round(g.orig.y + p.y - g.start.y)
     if (g.target === 'seatable') return setDraft({ kind: 'seatable', id: g.id, x, y })
@@ -163,6 +199,13 @@ export function Canvas() {
         if (g.select) selectDecor(g.select)
         else selectGuest(null)
       }
+    } else if (g.kind === 'guest') {
+      const target = draft?.kind === 'guest' ? draft.target : null
+      const drop = target && seatAt(chart, base, g.id, target.sid, target.seat)
+      if (target && drop) {
+        applyAssignments(drop.assignments)
+        selectGuest(g.id, target.sid)
+      } else if (!g.moved) selectGuest(g.id, g.from)
     } else if (draft?.kind === 'seatable') {
       moveSeatable(draft.id, draft.x, draft.y)
     } else if (draft?.kind === 'decor') {
@@ -191,6 +234,11 @@ export function Canvas() {
   }
 
   const isNew = (s: Seatable) => proposal !== null && !chart.seatables.some((x) => x.id === s.id)
+  // Chip drag preview: the seats the guest would take, and who they would replace.
+  const dragging = draft?.kind === 'guest' ? draft : null
+  const preview = dragging?.target ? seatAt(chart, base, dragging.id, dragging.target.sid, dragging.target.seat) : null
+  const dragGuest = dragging && chart.guests.find((g) => g.id === dragging.id)
+  const replaced = new Set(preview?.evicted)
   const tone = (s: Seatable): Tone => (s.id === dropId ? 'drop' : s.id === seatableId ? 'select' : isNew(s) ? 'added' : (sev.seatables.get(s.id) ?? null))
   const used = (id: string) => (shown.get(id) ?? []).filter(Boolean).length
 
@@ -272,12 +320,13 @@ export function Canvas() {
               return (
                 <g
                   key={`${s.id}-${i}`}
-                  className={`cursor-pointer ${state === 'moved' ? 'animate-pop' : ''}`}
-                  onPointerDown={(e) => e.stopPropagation()}
+                  className={`${proposal ? 'cursor-pointer' : 'cursor-grab'} ${state === 'moved' ? 'animate-pop' : ''} ${dragging?.id === g.id ? 'opacity-30' : ''}`}
+                  onPointerDown={onGuestDown(g.id, s.id)}
                   onClick={() => selectGuest(g.id, s.id)}
                 >
                   <title>{g.name}</title>
-                  {g.id === guestId && <circle cx={p.x} cy={p.y} r={CHIP + 3.5} className="fill-none stroke-wine [stroke-width:2.5]" />}
+                  {g.id === guestId && !dragging && <circle cx={p.x} cy={p.y} r={CHIP + 3.5} className="fill-none stroke-wine [stroke-width:2.5]" />}
+                  {replaced.has(g.id) && <circle cx={p.x} cy={p.y} r={CHIP + 3.5} className="fill-none stroke-hard [stroke-width:2.5]" />}
                   <circle cx={p.x} cy={p.y} r={CHIP} className={`${fill} stroke-ink/25`} style={fill ? undefined : { fill: groupTint(g.group) }} />
                   <text x={p.x} y={p.y + 3.2} textAnchor="middle" className={`pointer-events-none font-display text-[9px] font-bold ${state ? 'fill-white' : 'fill-ink'} ${slot.first ? '' : 'opacity-40'}`}>
                     {slot.first ? initials(g.name) : '+'}
@@ -310,6 +359,25 @@ export function Canvas() {
               </text>
             )
           })}
+
+          {/* Chip drag: dashed rings on the seats the guest would take, and the chip under the pointer. */}
+          {dragging && dragGuest && (
+            <g className="pointer-events-none">
+              {preview &&
+                dragging.target &&
+                Array.from({ length: dragGuest.size }, (_, k) => {
+                  const s = seatables.find((x) => x.id === dragging.target?.sid)
+                  const off = s && seatOffsets(s)[preview.start + k]
+                  if (!s || !off) return null
+                  const q = toCanvas(s, off)
+                  return <circle key={k} cx={q.x} cy={q.y} r={CHIP + 3.5} className="fill-none stroke-wine [stroke-dasharray:3_2] [stroke-width:2]" />
+                })}
+              <circle cx={dragging.x} cy={dragging.y} r={CHIP + 1} className="stroke-ink/40" style={{ fill: groupTint(dragGuest.group) }} filter="url(#lift)" />
+              <text x={dragging.x} y={dragging.y + 3.2} textAnchor="middle" className="fill-ink font-display text-[9px] font-bold">
+                {initials(dragGuest.name)}
+              </text>
+            </g>
+          )}
 
           {/* Resize handles on the selected room feature's corners, constant size on screen. */}
           {decor

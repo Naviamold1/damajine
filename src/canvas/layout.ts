@@ -83,22 +83,32 @@ export type Slot = { guest: Guest; first: boolean }
 export type Layout = Map<string, (Slot | null)[]>
 
 /**
- * Which seat index each guest occupies at their seatable. With `anchor` (the current layout), guests
- * who stay keep their seats and newcomers fill free ones, so a proposal does not shuffle the table.
+ * Which seat index each guest occupies at their seatable. Guests with an explicit `seat` go there first (when it is
+ * free). With `anchor` (the current layout), guests who stay keep their seats and newcomers fill free ones, so a
+ * proposal does not shuffle the table.
  */
 export function layoutSlots(chart: Chart, assignments: Assignment[], anchor?: Layout): Layout {
   const guests = new Map(chart.guests.filter((g) => g.attending).map((g) => [g.id, g]))
-  const bySeatable = new Map<string, Guest[]>()
+  const bySeatable = new Map<string, { g: Guest; seat?: number }[]>()
   for (const a of assignments) {
     const g = guests.get(a.guestId)
-    if (g) bySeatable.set(a.seatableId, [...(bySeatable.get(a.seatableId) ?? []), g])
+    if (g) bySeatable.set(a.seatableId, [...(bySeatable.get(a.seatableId) ?? []), { g, seat: a.seat }])
   }
 
   const layout: Layout = new Map()
   for (const s of chart.seatables) {
-    const here = bySeatable.get(s.id) ?? []
-    const used = here.reduce((n, g) => n + g.size, 0)
+    const entries = bySeatable.get(s.id) ?? []
+    const used = entries.reduce((n, e) => n + e.g.size, 0)
     const slots: (Slot | null)[] = Array.from({ length: Math.max(s.seats, used) }, () => null)
+    const placed = new Set<string>()
+    for (const { g, seat } of entries) {
+      if (seat === undefined || seat + g.size > slots.length) continue
+      const range = Array.from({ length: g.size }, (_, k) => seat + k)
+      if (range.some((i) => slots[i])) continue
+      range.forEach((i, k) => (slots[i] = { guest: g, first: k === 0 }))
+      placed.add(g.id)
+    }
+    const here = entries.map((e) => e.g).filter((g) => !placed.has(g.id))
     const before = anchor?.get(s.id) ?? []
     const stay = here.filter((g) => before.some((x) => x?.guest.id === g.id))
     const fresh = here.filter((g) => !stay.includes(g))
@@ -116,6 +126,33 @@ export function layoutSlots(chart: Chart, assignments: Assignment[], anchor?: La
     layout.set(s.id, slots)
   }
   return layout
+}
+
+/**
+ * Assignments after dropping a guest on seat `seat` of `seatableId` (canvas drag). A party takes that seat and the
+ * next ones, shifted left to fit. Whoever sits in those seats is unseated. Everyone else at the tables involved
+ * keeps the seat they show in `layout`, so the rest of the table does not shuffle. Also returns who was unseated
+ * and the first seat taken (for the drop preview). Null when the party is bigger than the table.
+ */
+export function seatAt(chart: Chart, layout: Layout, guestId: string, seatableId: string, seat: number) {
+  const g = chart.guests.find((x) => x.id === guestId)
+  const s = chart.seatables.find((x) => x.id === seatableId)
+  if (!g || !s || g.size > s.seats) return null
+  const start = Math.max(0, Math.min(seat, s.seats - g.size))
+  const slots = layout.get(s.id) ?? []
+  const evicted = new Set(
+    Array.from({ length: g.size }, (_, k) => slots[start + k]?.guest.id).filter((id): id is string => id !== undefined && id !== guestId),
+  )
+  const from = chart.assignments.find((a) => a.guestId === guestId)
+  const touched = new Set([s.id, from?.seatableId])
+  const firstSeat = (a: Assignment) => (layout.get(a.seatableId) ?? []).findIndex((x) => x?.guest.id === a.guestId && x.first)
+  const rest = chart.assignments
+    .filter((a) => a.guestId !== guestId && !evicted.has(a.guestId))
+    .map((a) => {
+      const i = touched.has(a.seatableId) ? firstSeat(a) : -1
+      return i >= 0 ? { ...a, seat: i } : a
+    })
+  return { assignments: [...rest, { guestId, seatableId: s.id, pinned: from?.pinned ?? false, seat: start }], evicted: [...evicted], start }
 }
 
 /** Canvas point of each guest's first seat, plus the outward direction for their name label. */

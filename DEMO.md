@@ -35,10 +35,12 @@ Hackathon
 - `Put Anuki, Giorgi, Lizi, Tazo and Omar near power` (5 moves, offline parser)
 - Import list below (offline parser gives the same table)
 
-Restaurant
-- `The Japaridze party needs wheelchair access` (seats all 9 walk-ins)
-- `Put the Chen party on the terrace` (1 move, after step 1)
-- `Seat the Gelashvili party on the terrace`
+Restaurant (all five story steps are cached)
+- `The Japaridze party needs wheelchair access` (seats all 4 walk-ins)
+- `The Gelashvili party is celebrating a birthday, give them a table on the terrace` (1 move)
+- `It's raining, close the terrace` (3 moves, terrace tables removed)
+- `The Beridze party paid and left` (B1 frees up)
+- Import `Okafor, 2 people, just walked in` (offline parser)
 
 ## Wow prompts (live Gemini only)
 
@@ -46,7 +48,6 @@ Restaurant
 - `Sophie and Emily only speak English, they must sit with James Wilson and David Miller`
 - `Seat team Pkhali Devs together` (after the import)
 - `Kartuli Bytes have five laptops, put them by the power sockets`
-- `The Gelashvili party is celebrating a birthday, give them a table on the terrace`
 
 Offline these answer "I could not turn that into a rule". Use the safe twin listed in each demo.
 
@@ -138,23 +139,36 @@ Avoid `Put team Khachapuri near the stage`: they already sit at T2, so it shows 
 
 ## 3. Restaurant (live floor)
 
-Setup: click **Restaurant**. 9/33 seated. Nine walk-in parties under Unseated, four parties eating and pinned (Beridze B1, Kapanadze T1, Smith P1, Dolidze at the bar).
+Setup: click **Restaurant**. 17/31 seated. Eight parties are eating and pinned (one color each, pins on the chips), four walk-ins wait under "Waiting for a seat": Japaridze (wheelchair), Gelashvili (birthday), Chen, Kobakhidze.
+
+Every step is cached, so it gives exactly this result with or without Gemini.
 
 1. Ctrl+K, type, Enter:
    ```
    The Japaridze party needs wheelchair access
    ```
-   See: 9 moves, every walk-in seated at a table of their own, Japaridze → F3 (step-free). Pinned parties do not move. Enter, Enter.
+   See: 4 moves, every walk-in seated at a table of their own, Japaridze → F3 (step-free). 31/31. Enter, Enter.
    Say: "One sentence, the whole waiting line is seated, and nobody who is eating gets moved."
 2. Ctrl+K, type, Enter:
    ```
    The Gelashvili party is celebrating a birthday, give them a table on the terrace
    ```
    See: Gelashvili B2 → P3 on the terrace, 1 move. Enter, Enter.
-3. Click **Import**, type `Okafor, 2 people, just walked in`, Ctrl+Enter, **Add 1 guest**: Okafor → B2 (the booth Gelashvili freed), 1 move. Enter.
-   Say: "New walk-in, one move, the rest of the floor stays put."
+3. Ctrl+K, type, Enter:
+   ```
+   It's raining, close the terrace
+   ```
+   See: "Remove P1, P2 and P3", the birthday's terrace rule dropped, 3 moves: Smith → F2, Mchedlishvili → T4, Gelashvili → B2. Nothing left unresolved. Enter, Enter.
+   Say: "The weather changed. One sentence, the terrace is gone, and everyone out there has a table inside, even the people already eating."
+4. Ctrl+K, type, Enter:
+   ```
+   The Beridze party paid and left
+   ```
+   See: "Remove Nino Beridze", B1 is free. Enter, Enter.
+5. Click **Import guests**, type `Okafor, 2 people, just walked in`, Ctrl+Enter, **Add 1 guest**: Okafor → B1 (the booth Beridze freed), 1 move. Enter.
+   Say: "Tables turn over, a walk-in arrives, one move. The rest of the floor stays put."
 
-Fallback: steps 1 and 3 are cached or parse offline. For step 2 type `Seat the Gelashvili party on the terrace`.
+Bonus: drag any chip onto a specific seat (it snaps to the nearest one). Dropping on a taken seat sends that guest back to "Waiting for a seat". Ctrl+Z undoes it.
 Parties never share a table in this preset (the bar is the exception), so do not ask to seat two parties together.
 
 ## Known issues

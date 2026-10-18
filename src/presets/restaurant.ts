@@ -1,28 +1,32 @@
 import { Chart } from '@/domain/types'
 import { guest } from './build'
 
+/** A party named after whoever booked it; its own group, so each party gets its own chip color. */
+const party = (name: string, size: number, rest: Omit<NonNullable<Parameters<typeof guest>[1]>, 'size' | 'group'> = {}) =>
+  guest(name, { size, group: `${name.split(' ').at(-1)} party`, ...rest })
+
 /**
  * Saturday night floor: 14 seatables (booths, 2-tops, 4-tops, bar, terrace).
- * Each guest is a party with `size`; some are already eating (pinned), the rest are walk-ins to seat.
+ * Each guest is a party with `size`. Eight parties are already eating (pinned), four walk-ins wait for a table.
  * F3 is step-free; terrace tables carry zone `terrace`. The kitchen is next to the bar.
+ * Inside tables are left free so the "close the terrace" demo can move the terrace diners indoors.
  */
 export const restaurant = Chart.parse({
   kind: 'restaurant',
   name: 'Sakhli, Saturday 20:00',
   guests: [
-    guest('Beridze', { size: 4, tags: ['seated'] }),
-    guest('Kapanadze', { size: 2, tags: ['seated'] }),
-    guest('Smith', { size: 2, tags: ['seated', 'tourists'] }),
-    guest('Dolidze', { size: 1, tags: ['seated'] }),
-    guest('Lomidze', { size: 3, tags: ['walk-in'] }),
-    guest('Abashidze', { size: 2, tags: ['walk-in'] }),
-    guest('Gelashvili', { size: 4, tags: ['walk-in', 'birthday'] }),
-    guest('Tsereteli', { size: 2, tags: ['walk-in'] }),
-    guest('Japaridze', { size: 4, tags: ['walk-in'], needs: ['wheelchair'] }),
-    guest('Chen', { size: 2, tags: ['walk-in', 'tourists'], needs: ['vegetarian'] }),
-    guest('Kobakhidze', { size: 4, tags: ['walk-in'], needs: ['kid'] }),
-    guest('Mchedlishvili', { size: 2, tags: ['walk-in'] }),
-    guest('Brown', { size: 1, tags: ['walk-in'] }),
+    party('Nino Beridze', 4, { tags: ['eating'] }),
+    party('Giorgi Kapanadze', 2, { tags: ['eating'] }),
+    party('Tamar Lomidze', 3, { tags: ['eating'] }),
+    party('Levan Abashidze', 2, { tags: ['eating'] }),
+    party('Emma Smith', 2, { tags: ['eating', 'tourists'] }),
+    party('Davit Mchedlishvili', 2, { tags: ['eating'] }),
+    party('Zura Dolidze', 1, { tags: ['eating'] }),
+    party('James Brown', 1, { tags: ['eating', 'tourists'] }),
+    party('Lasha Japaridze', 4, { tags: ['walk-in'], needs: ['wheelchair'] }),
+    party('Ana Gelashvili', 4, { tags: ['walk-in', 'birthday'] }),
+    party('Wei Chen', 2, { tags: ['walk-in', 'tourists'], needs: ['vegetarian'] }),
+    party('Irakli Kobakhidze', 4, { tags: ['walk-in'], needs: ['kid'] }),
   ],
   seatables: [
     { id: 'b1', kind: 'booth', label: 'B1', seats: 4, x: 110, y: 160 },
@@ -47,16 +51,22 @@ export const restaurant = Chart.parse({
   ],
   rules: [],
   assignments: [
-    { guestId: 'beridze', seatableId: 'b1', pinned: true },
-    { guestId: 'kapanadze', seatableId: 't1', pinned: true },
-    { guestId: 'smith', seatableId: 'p1', pinned: true },
-    { guestId: 'dolidze', seatableId: 'bar', pinned: true },
+    { guestId: 'nino-beridze', seatableId: 'b1', pinned: true },
+    { guestId: 'giorgi-kapanadze', seatableId: 't1', pinned: true },
+    { guestId: 'tamar-lomidze', seatableId: 'f1', pinned: true },
+    { guestId: 'levan-abashidze', seatableId: 't2', pinned: true },
+    { guestId: 'emma-smith', seatableId: 'p1', pinned: true },
+    { guestId: 'davit-mchedlishvili', seatableId: 'p2', pinned: true },
+    { guestId: 'zura-dolidze', seatableId: 'bar', pinned: true },
+    { guestId: 'james-brown', seatableId: 'bar', pinned: true },
   ],
 })
 
 export const restaurantRuleTemplates = [
-  'Seat the Gelashvili party on the terrace',
   'The Japaridze party needs wheelchair access',
+  'The Gelashvili party is celebrating a birthday, give them a table on the terrace',
+  "It's raining, close the terrace",
+  'The Beridze party paid and left',
   'Keep the Lomidze and Abashidze parties apart',
   'Put the Chen party on the terrace',
 ]

@@ -8,6 +8,10 @@ export const demoKey = (task: AiTask, text: string) => `${task}:${normalize(text
 const rules = (text: string, response: { rules: object[]; explanation: string }) =>
   [demoKey('rules', text), { ambiguous: [], actions: response.rules, explanation: response.explanation }] as const
 
+/** A cached plan with any actions (tables, guests...), in the same shape Gemini returns. */
+const plan = (text: string, response: { actions: object[]; explanation: string }) =>
+  [demoKey('rules', text), { ambiguous: [], ...response }] as const
+
 /**
  * Canned Gemini plans for the presets' ruleTemplates, in the same shape Gemini returns
  * (actions reference preset ids). Lets the demo run with no network. Validated by callers like live output.
@@ -93,20 +97,32 @@ export const demoCache = new Map<string, unknown>([
 
   // Restaurant
   rules('Seat the Gelashvili party on the terrace', {
-    rules: [{ type: 'zone', guestIds: ['gelashvili'], zone: 'terrace', hard: false }],
+    rules: [{ type: 'zone', guestIds: ['ana-gelashvili'], zone: 'terrace', hard: false }],
     explanation: 'The Gelashvili party goes to the terrace.',
   }),
+  rules('The Gelashvili party is celebrating a birthday, give them a table on the terrace', {
+    rules: [{ type: 'zone', guestIds: ['ana-gelashvili'], zone: 'terrace', hard: false }],
+    explanation: 'The Gelashvili birthday party gets a terrace table.',
+  }),
   rules('The Japaridze party needs wheelchair access', {
-    rules: [{ type: 'accessible', guestIds: ['japaridze'] }],
+    rules: [{ type: 'accessible', guestIds: ['lasha-japaridze'] }],
     explanation: 'The Japaridze party gets the step-free table.',
   }),
   rules('Keep the Lomidze and Abashidze parties apart', {
-    rules: [{ type: 'apart', guestIds: ['lomidze', 'abashidze'], hard: true }],
+    rules: [{ type: 'apart', guestIds: ['tamar-lomidze', 'levan-abashidze'], hard: true }],
     explanation: 'The Lomidze and Abashidze parties sit at different tables.',
   }),
   rules('Put the Chen party on the terrace', {
-    rules: [{ type: 'zone', guestIds: ['chen'], zone: 'terrace', hard: true }],
+    rules: [{ type: 'zone', guestIds: ['wei-chen'], zone: 'terrace', hard: true }],
     explanation: 'The Chen party gets a terrace table.',
+  }),
+  plan("It's raining, close the terrace", {
+    actions: [{ type: 'removeTable', tableIds: ['p1', 'p2', 'p3'] }],
+    explanation: 'The terrace closes and everyone out there moves inside.',
+  }),
+  plan('The Beridze party paid and left', {
+    actions: [{ type: 'removeGuest', guestIds: ['nino-beridze'] }],
+    explanation: 'The Beridze party leaves and B1 is free.',
   }),
 
   // Hackathon

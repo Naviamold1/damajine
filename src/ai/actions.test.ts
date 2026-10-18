@@ -37,6 +37,14 @@ describe('applyActions', () => {
     expect(plan.chart.seatables.find((s) => s.id === 't4')?.seats).toBe(12)
   })
 
+  it('removing every table of a zone drops the zone rules for it', () => {
+    const restaurant = presets.restaurant.chart
+    const withRule = applyActions(restaurant, [{ type: 'zone', guestIds: ['ana-gelashvili'], zone: 'terrace' }]).chart
+    const plan = applyActions(withRule, [{ type: 'removeTable', tableIds: ['p1', 'p2', 'p3'] }])
+    expect(plan.chart.rules).toEqual([])
+    expect(plan.changes).toEqual(['Remove P1, P2 and P3', 'Drop rule: Seat Ana Gelashvili in zone "terrace" (preferred).'])
+  })
+
   it('removing a guest drops them from rules too', () => {
     const { plan } = propose([{ type: 'removeGuest', guestIds: ['tamar-beridze'] }])
     expect(plan.chart.guests.some((g) => g.id === 'tamar-beridze')).toBe(false)
